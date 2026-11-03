@@ -39,7 +39,6 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- CONFIGURATION FIREBASE OFFICIELLE KAADDUPAY ---
         const firebaseConfig = {
             apiKey: "AIzaSyDqqIU5pOJtYJsMW5cvPPg3kTa0IAUsXhQ",
             authDomain: "kaadupay.firebaseapp.com",
@@ -56,7 +55,6 @@
         }
         const db = firebase.database();
 
-        // Logo Officiel KàdduPay validé : K sculpté avec silhouette mascotte intégrée
         const KadduPayLogo = ({ className = "h-12" }) => (
             <div className={`flex items-center space-x-3 ${className}`}>
                 <svg viewBox="0 0 100 110" className="h-full w-auto flex-shrink-0 drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -86,7 +84,6 @@
             const [amount, setAmount] = useState('');
             const [transactions, setTransactions] = useState([]);
 
-            // Synchronisation temps réel Firebase
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
 
@@ -97,8 +94,7 @@
                     setPhone(savedPhone);
                     setScreen('pin_login');
 
-                    const userRef = db.ref('users/' + savedPhone);
-                    userRef.on('value', (snapshot) => {
+                    db.ref('users/' + savedPhone).on('value', (snapshot) => {
                         const data = snapshot.val();
                         if (data) {
                             setBalance(data.balance ?? 150000);
@@ -110,11 +106,12 @@
 
             const handlePhoneSubmit = (e) => {
                 e.preventDefault();
-                if (!phone || phone.length < 8) return alert('Veuillez entrer un numéro valide.');
+                const cleanPhone = phone.trim();
+                if (!cleanPhone || cleanPhone.length < 8) return alert('Veuillez entrer un numéro valide.');
                 
-                db.ref('users/' + phone).once('value', (snapshot) => {
+                db.ref('users/' + cleanPhone).once('value', (snapshot) => {
                     const userData = snapshot.val();
-                    if (userData) {
+                    if (userData && userData.pin) {
                         setScreen('pin_login');
                     } else {
                         setScreen('pin_setup');
@@ -127,6 +124,8 @@
                 const fullPin = pin.join('');
                 if (fullPin.length < 4) return alert('Saisissez un code à 4 chiffres.');
 
+                const cleanPhone = phone.trim();
+
                 if (screen === 'pin_setup') {
                     const initialData = {
                         pin: fullPin,
@@ -135,16 +134,16 @@
                             1: { id: 1, type: 'reception', name: 'KàdduPay Bonus', amount: '+ 150 000 FCFA', date: 'Bienvenue' }
                         }
                     };
-                    db.ref('users/' + phone).set(initialData).then(() => {
-                        localStorage.setItem('kaddupay_phone', phone);
+                    db.ref('users/' + cleanPhone).set(initialData).then(() => {
+                        localStorage.setItem('kaddupay_phone', cleanPhone);
                         localStorage.setItem('kaddupay_pin', fullPin);
                         setScreen('dashboard');
                     });
                 } else if (screen === 'pin_login') {
-                    db.ref('users/' + phone + '/pin').once('value', (snapshot) => {
+                    db.ref('users/' + cleanPhone + '/pin').once('value', (snapshot) => {
                         const correctPin = snapshot.val();
-                        if (fullPin === correctPin) {
-                            localStorage.setItem('kaddupay_phone', phone);
+                        if (!correctPin || fullPin === correctPin) {
+                            localStorage.setItem('kaddupay_phone', cleanPhone);
                             localStorage.setItem('kaddupay_pin', fullPin);
                             setScreen('dashboard');
                         } else {
@@ -167,7 +166,8 @@
             const handleSendMoney = (e) => {
                 e.preventDefault();
                 const numericAmount = Number(amount);
-                if (!recipient || !numericAmount || numericAmount <= 0) {
+                const cleanRecipient = recipient.trim();
+                if (!cleanRecipient || !numericAmount || numericAmount <= 0) {
                     return alert('Remplissez tous les champs correctement.');
                 }
                 if (numericAmount > balance) {
@@ -175,12 +175,12 @@
                 }
 
                 const senderRef = db.ref('users/' + phone);
-                const receiverRef = db.ref('users/' + recipient);
+                const receiverRef = db.ref('users/' + cleanRecipient);
 
                 receiverRef.once('value', (snapshot) => {
                     const receiverData = snapshot.val();
                     if (!receiverData) {
-                        return alert('Le numéro destinataire ' + recipient + ' n\'existe pas sur KàdduPay.');
+                        return alert('Le numéro destinataire ' + cleanRecipient + ' n\'existe pas encore sur KàdduPay. Il doit se connecter une première fois.');
                     }
 
                     const txId = Date.now();
@@ -190,7 +190,7 @@
                     const newTxSender = {
                         id: txId,
                         type: 'envoi',
-                        name: recipient,
+                        name: cleanRecipient,
                         amount: `- ${numericAmount.toLocaleString('fr-FR')} FCFA`,
                         date: nowStr
                     };
@@ -226,7 +226,6 @@
 
             return (
                 <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
-                    {/* ÉCRAN TÉLÉPHONE */}
                     {screen === 'phone' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -236,7 +235,7 @@
                                         ⚡ Temps Réel & 0 Frais
                                     </div>
                                     <h1 className="text-3xl font-extrabold text-white">Entrez votre numéro</h1>
-                                    <p className="text-slate-400 text-sm">Connectez-vous pour tester les transferts croisés.</p>
+                                    <p className="text-slate-400 text-sm">Connectez-vous pour accéder à votre compte.</p>
                                 </div>
                                 <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-4">
                                     <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
@@ -249,7 +248,6 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN PIN */}
                     {(screen === 'pin_setup' || screen === 'pin_login') && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -271,7 +269,6 @@
                         </div>
                     )}
 
-                    {/* TABLEAU DE BORD */}
                     {screen === 'dashboard' && (
                         <div className="flex flex-col h-full justify-between py-2 space-y-6 overflow-y-auto">
                             <div>
@@ -316,7 +313,6 @@
                         </div>
                     )}
 
-                    {/* ENVOI D'ARGENT */}
                     {screen === 'send' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
