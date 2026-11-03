@@ -83,6 +83,10 @@
             const [recipient, setRecipient] = useState('');
             const [amount, setAmount] = useState('');
             const [transactions, setTransactions] = useState([]);
+            
+            // Paramètres / Sécurité PIN
+            const [oldPin, setOldPin] = useState('');
+            const [newPinVal, setNewPinVal] = useState('');
 
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
@@ -94,7 +98,7 @@
                     setScreen('pin_login');
                     setupCloudSync(savedPhone);
                 }
-            }, []);
+            }, [screen]);
 
             const setupCloudSync = (targetPhone) => {
                 db.ref('users/' + targetPhone).on('value', (snapshot) => {
@@ -109,29 +113,26 @@
             const handlePhoneSubmit = (e) => {
                 e.preventDefault();
                 const cleanPhone = phone.trim();
-                if (!cleanPhone || cleanPhone.length < 8) return alert('Veuillez entrer un numéro valide.');
-                
-                // Passage immédiat et fluide sans attente bloquante du serveur
+                if (!cleanPhone || cleanPhone.length < 8) return alert('Numéro invalide.');
                 setScreen('pin_login');
             };
 
             const handlePinSubmit = (e) => {
                 e.preventDefault();
                 const fullPin = pin.join('');
-                if (fullPin.length < 4) return alert('Saisissez un code à 4 chiffres.');
+                if (fullPin.length < 4) return alert('Saisissez 4 chiffres.');
 
                 const cleanPhone = phone.trim();
                 localStorage.setItem('kaddupay_phone', cleanPhone);
                 localStorage.setItem('kaddupay_pin', fullPin);
 
-                // Vérification ou initialisation directe dans Firebase
                 db.ref('users/' + cleanPhone).once('value').then((snapshot) => {
                     const userData = snapshot.val();
                     if (!userData) {
-                        // Création automatique du compte cloud avec bonus de 150 000 FCFA
                         db.ref('users/' + cleanPhone).set({
                             pin: fullPin,
                             balance: 150000,
+                            name: 'Client KàdduPay',
                             transactions: {
                                 1: { id: 1, type: 'reception', name: 'Bonus KàdduPay', amount: '+ 150 000 FCFA', date: 'Bienvenue' }
                             }
@@ -139,15 +140,13 @@
                     }
                     setupCloudSync(cleanPhone);
                     setScreen('dashboard');
-                }).catch(() => {
-                    setScreen('dashboard');
                 });
             };
 
             const handlePinInput = (val, index) => {
-                const newPin = [...pin];
-                newPin[index] = val;
-                setPin(newPin);
+                const newPinState = [...pin];
+                newPinState[index] = val;
+                setPin(newPinState);
                 if (val && index < 3) {
                     document.getElementById(`pin-${index + 1}`)?.focus();
                 }
@@ -157,12 +156,8 @@
                 e.preventDefault();
                 const numericAmount = Number(amount);
                 const cleanRecipient = recipient.trim();
-                if (!cleanRecipient || !numericAmount || numericAmount <= 0) {
-                    return alert('Remplissez tous les champs correctement.');
-                }
-                if (numericAmount > balance) {
-                    return alert('Solde insuffisant.');
-                }
+                if (!cleanRecipient || !numericAmount || numericAmount <= 0) return alert('Champs incorrects.');
+                if (numericAmount > balance) return alert('Solde insuffisant.');
 
                 const senderRef = db.ref('users/' + phone);
                 const receiverRef = db.ref('users/' + cleanRecipient);
@@ -197,6 +192,7 @@
                         receiverRef.set({
                             pin: "0000",
                             balance: newReceiverBalance,
+                            name: 'Client KàdduPay',
                             transactions: { [txId]: newTxReceiver }
                         });
                     } else {
@@ -211,6 +207,18 @@
                 });
             };
 
+            const handleChangePin = (e) => {
+                e.preventDefault();
+                if (newPinVal.length !== 4) return alert('Le nouveau code PIN doit comporter 4 chiffres.');
+                
+                db.ref('users/' + phone).update({ pin: newPinVal }).then(() => {
+                    localStorage.setItem('kaddupay_pin', newPinVal);
+                    alert('Code PIN modifié avec succès !');
+                    setNewPinVal('');
+                    setScreen('dashboard');
+                });
+            };
+
             const logout = () => {
                 localStorage.clear();
                 setPhone('');
@@ -220,6 +228,7 @@
 
             return (
                 <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
+                    {/* ÉCRAN TÉLÉPHONE */}
                     {screen === 'phone' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -229,7 +238,7 @@
                                         ⚡ 0 Frais & Temps Réel
                                     </div>
                                     <h1 className="text-3xl font-extrabold text-white">Entrez votre numéro</h1>
-                                    <p className="text-slate-400 text-sm">Accédez instantanément à votre compte.</p>
+                                    <p className="text-slate-400 text-sm">Accédez à votre compte KàdduPay.</p>
                                 </div>
                                 <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-4">
                                     <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
@@ -242,6 +251,7 @@
                         </div>
                     )}
 
+                    {/* ÉCRAN PIN */}
                     {screen === 'pin_login' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -263,32 +273,38 @@
                         </div>
                     )}
 
+                    {/* TABLEAU DE BORD */}
                     {screen === 'dashboard' && (
-                        <div className="flex flex-col h-full justify-between py-2 space-y-6 overflow-y-auto">
+                        <div className="flex flex-col h-full justify-between py-2 space-y-4 overflow-y-auto">
                             <div>
                                 <div className="flex items-center justify-between">
                                     <KadduPayLogo className="h-10" />
-                                    <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">Quitter</button>
+                                    <div className="flex space-x-2">
+                                        <button onClick={() => setScreen('profile')} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-orange-400 text-xs font-semibold flex items-center space-x-1">
+                                            <i data-lucide="user" className="w-4 h-4"></i><span>Profil</span>
+                                        </button>
+                                        <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">Quitter</button>
+                                    </div>
                                 </div>
-                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center shadow-xl">
+                                <div className="mt-5 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center shadow-xl">
                                     <p className="text-xs font-semibold text-slate-400 uppercase">Solde disponible (+221 {phone})</p>
                                     <div className="text-4xl font-extrabold text-white mt-2">
                                         {balance.toLocaleString('fr-FR')} <span className="text-orange-400 text-xl">FCFA</span>
                                     </div>
                                     <div className="mt-4 inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-emerald-400 text-xs font-semibold">
-                                        ✓ Synchro Cloud en direct
+                                        ✓ 0 FCFA de frais garanti
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 mt-6">
-                                    <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2">
+                                <div className="grid grid-cols-2 gap-4 mt-5">
+                                    <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2 shadow-lg">
                                         <i data-lucide="send" className="w-6 h-6"></i><span>Envoyer</span>
                                     </button>
-                                    <button onClick={() => alert('Recharge test')} className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2">
-                                        <i data-lucide="download" className="w-6 h-6 text-orange-400"></i><span>Recharger</span>
+                                    <button onClick={() => setScreen('settings')} className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2">
+                                        <i data-lucide="shield" className="w-6 h-6 text-orange-400"></i><span>Sécurité PIN</span>
                                     </button>
                                 </div>
-                                <div className="mt-8 space-y-4">
-                                    <h3 className="text-sm font-bold uppercase text-slate-400">Historique des transactions</h3>
+                                <div className="mt-6 space-y-3">
+                                    <h3 className="text-sm font-bold uppercase text-slate-400">Historique récent</h3>
                                     <div className="space-y-3">
                                         {transactions.map(tx => (
                                             <div key={tx.id} className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
@@ -307,13 +323,66 @@
                         </div>
                     )}
 
+                    {/* ÉCRAN PROFIL & KYC & QR CODE */}
+                    {screen === 'profile' && (
+                        <div className="flex flex-col justify-between h-full py-2 overflow-y-auto">
+                            <div>
+                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
+                                <div className="mt-4 text-center space-y-2">
+                                    <div className="w-20 h-20 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-full mx-auto flex items-center text-3xl font-bold justify-center text-white shadow-xl">
+                                        {phone.slice(-2)}
+                                    </div>
+                                    <h1 className="text-2xl font-bold text-white">Abel Leclerc</h1>
+                                    <p className="text-slate-400 text-sm">🇸🇳 +221 {phone}</p>
+                                    <div className="inline-flex items-center space-x-1.5 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-blue-400 text-xs font-semibold">
+                                        <span>✓ Compte Vérifié (KYC Sénégal)</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center space-y-4">
+                                    <p className="text-xs font-bold text-slate-400 uppercase">Mon QR Code de Réception</p>
+                                    <div className="bg-white p-4 rounded-2xl w-40 h-40 mx-auto flex flex-col items-center justify-center shadow-inner">
+                                        {/* Simulation visuelle de QR Code Pro */}
+                                        <div className="w-32 h-32 bg-slate-900 rounded-lg p-2 flex flex-col justify-between items-center text-white text-[9px] font-mono text-center">
+                                            <div className="bg-orange-500 w-full py-1 font-bold rounded">KAADUPAY QR</div>
+                                            <div className="tracking-widest font-extrabold">+221 {phone}</div>
+                                            <div className="text-[7px] text-slate-400">0 Frais instantané</div>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-slate-400">Faites scanner ce code pour recevoir de l'argent instantanément.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ÉCRAN PARAMÈTRES / SÉCURITÉ PIN */}
+                    {screen === 'settings' && (
+                        <div className="flex flex-col justify-between h-full py-2">
+                            <div>
+                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
+                                <div className="mt-6 space-y-2">
+                                    <h1 className="text-2xl font-bold text-white">Sécurité du compte</h1>
+                                    <p className="text-slate-400 text-sm">Modifiez votre code PIN secret à 4 chiffres.</p>
+                                </div>
+                                <form onSubmit={handleChangePin} className="mt-6 space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-slate-300 uppercase">Nouveau Code PIN (4 chiffres)</label>
+                                        <input type="password" maxLength="4" value={newPinVal} onChange={(e) => setNewPinVal(e.target.value)} placeholder="••••" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold tracking-widest text-white focus:outline-none" required />
+                                    </div>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">Mettre à jour le PIN</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ENVOI D'ARGENT */}
                     {screen === 'send' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
                                 <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
                                 <div className="mt-6 space-y-2">
                                     <h1 className="text-2xl font-bold text-white">Envoyer de l'argent</h1>
-                                    <p className="text-slate-400 text-sm">Frais : 0 FCFA</p>
+                                    <p className="text-slate-400 text-sm">Frais de transfert : 0 FCFA</p>
                                 </div>
                                 <form onSubmit={handleSendMoney} className="mt-6 space-y-4">
                                     <div className="space-y-1.5">
@@ -324,7 +393,7 @@
                                         <label className="text-xs font-semibold text-slate-300 uppercase">Montant (FCFA)</label>
                                         <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold text-white focus:outline-none" required />
                                     </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4">Transférer instantanément</button>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">Transférer instantanément</button>
                                 </form>
                             </div>
                         </div>
