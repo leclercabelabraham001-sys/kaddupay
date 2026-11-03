@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>KàdduPay - Paiement sans frais au Sénégal</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel pour JSX -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
@@ -20,34 +18,25 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: #0b1329;
             color: #f8fafc;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .safe-bottom {
-            padding-bottom: env(safe-area-inset-bottom, 20px);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            height: 100dvh;
         }
     </style>
 </head>
-<body class="h-full overflow-x-hidden">
+<body class="h-full">
     <div id="root" class="h-full flex flex-col"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-
         function App() {
-            const [step, setStep] = useState(1);
-            const [phone, setPhone] = useState('');
-            const [amount, setAmount] = useState('');
-
-            useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
-            });
+            const [step, setStep] = React.useState(1);
+            const [phone, setPhone] = React.useState('');
+            const [amount, setAmount] = React.useState('');
 
             return (
-                <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] justify-between p-5 safe-bottom">
-                    <!-- En-tête -->
+                <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] justify-between p-6">
+                    {/* En-tête */}
                     <div className="flex items-center justify-between pt-2">
                         <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-600/30">
@@ -60,7 +49,7 @@
                         </div>
                     </div>
 
-                    <!-- Barre de progression -->
+                    {/* Barre de progression */}
                     <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-4">
                         <div 
                             className="bg-gradient-to-r from-orange-500 to-amber-500 h-full transition-all duration-300"
@@ -68,11 +57,10 @@
                         ></div>
                     </div>
 
-                    <!-- Contenu principal -->
+                    {/* Contenu principal */}
                     <div className="my-auto py-6 space-y-6">
                         <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
-                            <i data-lucide="zap" className="w-3.5 h-3.5"></i>
-                            <span>Paiement instantané sans frais</span>
+                            <span>⚡ Paiement instantané sans frais</span>
                         </div>
 
                         {step === 1 ? (
@@ -132,17 +120,16 @@
                         )}
                     </div>
 
-                    <!-- Bouton d'action bas de page -->
-                    <div className="pt-4">
+                    {/* Bouton d'action */}
+                    <div className="pt-4 pb-4">
                         <button 
                             onClick={() => {
                                 if (step === 1) setStep(2);
                                 else alert('Paiement validé avec succès !');
                             }}
-                            className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform flex items-center justify-center space-x-2 text-base"
+                            className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base"
                         >
-                            <span>{step === 1 ? 'Continuer' : 'Payer maintenant'}</span>
-                            <i data-lucide="arrow-right" className="w-5 h-5"></i>
+                            {step === 1 ? 'Continuer' : 'Payer maintenant'}
                         </button>
                     </div>
                 </div>
