@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KàdduPay - Paiement sans frais au Sénégal</title>
+    <title>KàdduPay - Application de Paiement</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -22,116 +24,307 @@
             padding: 0;
             height: 100vh;
             height: 100dvh;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
 </head>
 <body class="h-full">
-    <div id="root" class="h-full flex flex-col"></div>
+    <div id="root" class="h-full"></div>
 
     <script type="text/babel">
+        const { useState, useEffect } = React;
+
         function App() {
-            const [step, setStep] = React.useState(1);
-            const [phone, setPhone] = React.useState('');
-            const [amount, setAmount] = React.useState('');
+            // État des écrans : 'phone', 'otp', 'dashboard', 'send'
+            const [screen, setScreen] = useState('phone');
+            const [phone, setPhone] = useState('');
+            const [otp, setOtp] = useState(['', '', '', '']);
+            const [balance, setBalance] = useState(150000);
+            const [recipient, setRecipient] = useState('');
+            const [amount, setAmount] = useState('');
+            const [transactions, setTransactions] = useState([
+                { id: 1, type: 'reception', name: 'Moussa Diop', amount: '+ 25 000 FCFA', date: 'Aujourd\'hui 14:30' },
+                { id: 2, type: 'envoi', name: 'Boutique Express', amount: '- 12 500 FCFA', date: 'Hier 18:15' }
+            ]);
+
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            });
+
+            // Handlers
+            const handlePhoneSubmit = (e) => {
+                e.preventDefault();
+                if (!phone) return alert('Veuillez entrer un numéro valide.');
+                setScreen('otp');
+            };
+
+            const handleOtpSubmit = (e) => {
+                e.preventDefault();
+                setScreen('dashboard');
+            };
+
+            const handleSendMoney = (e) => {
+                e.preventDefault();
+                const numericAmount = Number(amount);
+                if (!recipient || !numericAmount || numericAmount <= 0) {
+                    return alert('Veuillez remplir correctement les informations.');
+                }
+                if (numericAmount > balance) {
+                    return alert('Solde insuffisant.');
+                }
+                
+                setBalance(prev => prev - numericAmount);
+                setTransactions([
+                    { id: Date.now(), type: 'envoi', name: recipient, amount: `- ${numericAmount.toLocaleString('fr-FR')} FCFA`, date: 'À l\'instant' },
+                    ...transactions
+                ]);
+                alert('Transfert de ' + numericAmount.toLocaleString('fr-FR') + ' FCFA effectué sans frais !');
+                setRecipient('');
+                setAmount('');
+                setScreen('dashboard');
+            };
 
             return (
-                <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] justify-between p-6">
-                    {/* En-tête */}
-                    <div className="flex items-center justify-between pt-2">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-600/30">
-                                <span className="text-white font-bold text-xl">K</span>
-                            </div>
-                            <span className="font-bold text-xl tracking-tight text-white">KàdduPay</span>
-                        </div>
-                        <div className="bg-slate-800/80 border border-slate-700/50 px-3 py-1.5 rounded-full text-xs font-medium text-slate-300">
-                            Étape {step} sur 2
-                        </div>
-                    </div>
+                <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
+                    
+                    {/* ÉCRAN 1 : INSCRIPTION / NUMÉRO DE TÉLÉPHONE */}
+                    {screen === 'phone' && (
+                        <div className="flex flex-col justify-between h-full py-4">
+                            <div>
+                                <div className="flex items-center space-x-3 pt-2">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-600/30">
+                                        <span className="text-white font-bold text-xl">K</span>
+                                    </div>
+                                    <span className="font-bold text-xl tracking-tight text-white">KàdduPay</span>
+                                </div>
 
-                    {/* Barre de progression */}
-                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-4">
-                        <div 
-                            className="bg-gradient-to-r from-orange-500 to-amber-500 h-full transition-all duration-300"
-                            style={{ width: step === 1 ? '50%' : '100%' }}
-                        ></div>
-                    </div>
+                                <div className="mt-12 space-y-3">
+                                    <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
+                                        ⚡ Inscription Instantanée
+                                    </div>
+                                    <h1 className="text-3xl font-extrabold tracking-tight text-white">
+                                        Transferts & Paiements 100% Gratuits
+                                    </h1>
+                                    <p className="text-slate-400 text-sm">
+                                        Entrez votre numéro de téléphone pour vous connecter ou créer votre compte KàdduPay.
+                                    </p>
+                                </div>
 
-                    {/* Contenu principal */}
-                    <div className="my-auto py-6 space-y-6">
-                        <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
-                            <span>⚡ Paiement instantané sans frais</span>
-                        </div>
-
-                        {step === 1 ? (
-                            <div className="space-y-4">
-                                <h1 className="text-2xl font-bold tracking-tight text-white">
-                                    Le transfert d'argent 100% gratuit au Sénégal.
-                                </h1>
-                                <p className="text-slate-400 text-sm">
-                                    Zéro frais sur tous vos transferts et règlements. Entrez votre numéro pour commencer.
-                                </p>
-
-                                <div className="space-y-2 pt-2">
-                                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Numéro de Téléphone</label>
-                                    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-3 focus-within:border-orange-500 transition-colors">
-                                        <div className="flex items-center space-x-2 pr-3 border-r border-slate-700">
-                                            <span className="text-lg">🇸🇳</span>
-                                            <span className="text-sm font-semibold text-slate-200">+221</span>
+                                <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Numéro de Téléphone</label>
+                                        <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 focus-within:border-orange-500 transition-colors">
+                                            <div className="flex items-center space-x-2 pr-3 border-r border-slate-700">
+                                                <span className="text-lg">🇸🇳</span>
+                                                <span className="text-sm font-semibold text-slate-200">+221</span>
+                                            </div>
+                                            <input 
+                                                type="tel" 
+                                                value={phone}
+                                                onChange={(e) => setPhone(e.target.value)}
+                                                placeholder="77 000 00 00" 
+                                                className="bg-transparent pl-3 w-full text-white placeholder-slate-500 focus:outline-none text-base font-medium"
+                                                required
+                                            />
                                         </div>
-                                        <input 
-                                            type="tel" 
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            placeholder="77 000 00 00" 
-                                            className="bg-transparent pl-3 w-full text-white placeholder-slate-500 focus:outline-none text-base"
-                                        />
+                                    </div>
+
+                                    <button 
+                                        type="submit"
+                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base mt-6"
+                                    >
+                                        Continuer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ÉCRAN 2 : VALIDATION OTP CODE */}
+                    {screen === 'otp' && (
+                        <div className="flex flex-col justify-between h-full py-4">
+                            <div>
+                                <button onClick={() => setScreen('phone')} className="text-slate-400 text-sm flex items-center space-x-1 pt-2">
+                                    <span>← Retour</span>
+                                </button>
+
+                                <div className="mt-8 space-y-3">
+                                    <h1 className="text-2xl font-bold tracking-tight text-white">
+                                        Code de vérification
+                                    </h1>
+                                    <p className="text-slate-400 text-sm">
+                                        Saisissez le code à 4 chiffres envoyé au <strong className="text-white">+221 {phone}</strong>.
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleOtpSubmit} className="mt-8 space-y-6">
+                                    <div className="flex justify-between space-x-3">
+                                        {[0, 1, 2, 3].map((index) => (
+                                            <input 
+                                                key={index}
+                                                type="text" 
+                                                maxLength="1"
+                                                value={otp[index]}
+                                                onChange={(e) => {
+                                                    const newOtp = [...otp];
+                                                    newOtp[index] = e.target.value;
+                                                    setOtp(newOtp);
+                                                }}
+                                                className="w-16 h-16 bg-slate-800/80 border border-slate-700 rounded-2xl text-center text-2xl font-bold text-white focus:border-orange-500 focus:outline-none"
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <button 
+                                        type="submit"
+                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base"
+                                    >
+                                        Valider & Accéder au Compte
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ÉCRAN 3 : TABLEAU DE BORD CLIENT (SOLDE ET HISTORIQUE) */}
+                    {screen === 'dashboard' && (
+                        <div className="flex flex-col h-full justify-between py-2 space-y-6 overflow-y-auto">
+                            <div>
+                                {/* En-tête profil */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-11 h-11 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center font-bold text-orange-400">
+                                            KP
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400">Bienvenue 👋</p>
+                                            <p className="text-sm font-bold text-white">+221 {phone || '77 000 00 00'}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setScreen('phone')} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs">
+                                        Déconnexion
+                                    </button>
+                                </div>
+
+                                {/* Carte Solde */}
+                                <div className="mt-6 bg-gradient-to-br from-slate-800 via-slate-800/90 to-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl"></div>
+                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Solde disponible</p>
+                                    <div className="text-3xl font-extrabold text-white mt-2 tracking-tight">
+                                        {balance.toLocaleString('fr-FR')} <span className="text-orange-400 text-lg">FCFA</span>
+                                    </div>
+                                    <div className="mt-4 inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-emerald-400 text-xs font-semibold">
+                                        ✓ Frais de gestion : 0 FCFA
+                                    </div>
+                                </div>
+
+                                {/* Actions Rapides */}
+                                <div className="grid grid-cols-2 gap-4 mt-6">
+                                    <button 
+                                        onClick={() => setScreen('send')}
+                                        className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-4 rounded-2xl font-bold flex items-center justify-center space-x-2 shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-transform"
+                                    >
+                                        <span>Envoyer / Payer</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => alert('Option pour recevoir de l\'argent via QR Code ou Numéro.')}
+                                        className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex items-center justify-center space-x-2 active:scale-[0.98] transition-transform"
+                                    >
+                                        <span>Recharger</span>
+                                    </button>
+                                </div>
+
+                                {/* Historique des Transactions */}
+                                <div className="mt-8 space-y-4">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Activités récentes</h3>
+                                    <div className="space-y-3">
+                                        {transactions.map(tx => (
+                                            <div key={tx.id} className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-sm text-white">{tx.name}</p>
+                                                    <p className="text-xs text-slate-500">{tx.date}</p>
+                                                </div>
+                                                <span className={`font-bold text-sm ${tx.type === 'reception' ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                                    {tx.amount}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <h1 className="text-2xl font-bold tracking-tight text-white">
-                                    Montant du paiement
-                                </h1>
-                                <p className="text-slate-400 text-sm">
-                                    Indiquez le montant à transférer ou à régler au marchand.
-                                </p>
+                        </div>
+                    )}
 
-                                <div className="space-y-2 pt-2">
-                                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Montant (FCFA)</label>
-                                    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4 focus-within:border-orange-500 transition-colors">
-                                        <input 
-                                            type="number" 
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            placeholder="0" 
-                                            className="bg-transparent w-full text-2xl font-bold text-white placeholder-slate-600 focus:outline-none"
-                                        />
-                                        <span className="text-slate-400 font-semibold pl-2">FCFA</span>
+                    {/* ÉCRAN 4 : EFFECTUER UN PAIEMENT / TRANSFERT */}
+                    {screen === 'send' && (
+                        <div className="flex flex-col justify-between h-full py-2">
+                            <div>
+                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm flex items-center space-x-1 pt-2">
+                                    <span>← Retour au tableau de bord</span>
+                                </button>
+
+                                <div className="mt-6 space-y-2">
+                                    <h1 className="text-2xl font-bold tracking-tight text-white">
+                                        Nouveau Transfert
+                                    </h1>
+                                    <p className="text-slate-400 text-sm">
+                                        Transférez de l'argent instantanément et sans aucun frais.
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleSendMoney} className="mt-6 space-y-4">
+                                    {/* Destinataire */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Destinataire (Numéro ou Nom)</label>
+                                        <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 focus-within:border-orange-500 transition-colors">
+                                            <input 
+                                                type="text" 
+                                                value={recipient}
+                                                onChange={(e) => setRecipient(e.target.value)}
+                                                placeholder="ex: 77 123 45 67 ou Marchand" 
+                                                className="bg-transparent w-full text-white placeholder-slate-500 focus:outline-none text-base"
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="bg-slate-800/40 border border-slate-800 p-4 rounded-2xl flex items-center justify-between text-sm">
-                                    <span className="text-slate-400">Frais de transaction</span>
-                                    <span className="text-emerald-400 font-bold">0 FCFA (Gratuit)</span>
-                                </div>
+                                    {/* Montant */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Montant (FCFA)</label>
+                                        <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 focus-within:border-orange-500 transition-colors">
+                                            <input 
+                                                type="number" 
+                                                value={amount}
+                                                onChange={(e) => setAmount(e.target.value)}
+                                                placeholder="0" 
+                                                className="bg-transparent w-full text-2xl font-bold text-white placeholder-slate-600 focus:outline-none"
+                                                required
+                                            />
+                                            <span className="text-slate-400 font-semibold pl-2">FCFA</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Encadré Frais */}
+                                    <div className="bg-slate-800/40 border border-slate-800/80 p-4 rounded-2xl flex items-center justify-between text-sm">
+                                        <span className="text-slate-400">Frais KàdduPay</span>
+                                        <span className="text-emerald-400 font-bold">0 FCFA (Gratuit)</span>
+                                    </div>
+
+                                    <button 
+                                        type="submit"
+                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base mt-4"
+                                    >
+                                        Confirmer le paiement
+                                    </button>
+                                </form>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
-                    {/* Bouton d'action */}
-                    <div className="pt-4 pb-4">
-                        <button 
-                            onClick={() => {
-                                if (step === 1) setStep(2);
-                                else alert('Paiement validé avec succès !');
-                            }}
-                            className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base"
-                        >
-                            {step === 1 ? 'Continuer' : 'Payer maintenant'}
-                        </button>
-                    </div>
                 </div>
             );
         }
