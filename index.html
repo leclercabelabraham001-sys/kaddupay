@@ -84,21 +84,17 @@
             const [amount, setAmount] = useState('');
             const [transactions, setTransactions] = useState([]);
             
-            // Paramètres / Sécurité PIN
-            const [oldPin, setOldPin] = useState('');
             const [newPinVal, setNewPinVal] = useState('');
 
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
                 const savedPhone = localStorage.getItem('kaddupay_phone');
-                const savedPin = localStorage.getItem('kaddupay_pin');
-
-                if (savedPhone && savedPin) {
+                if (savedPhone) {
                     setPhone(savedPhone);
                     setScreen('pin_login');
                     setupCloudSync(savedPhone);
                 }
-            }, [screen]);
+            }, []);
 
             const setupCloudSync = (targetPhone) => {
                 db.ref('users/' + targetPhone).on('value', (snapshot) => {
@@ -114,6 +110,7 @@
                 e.preventDefault();
                 const cleanPhone = phone.trim();
                 if (!cleanPhone || cleanPhone.length < 8) return alert('Numéro invalide.');
+                localStorage.setItem('kaddupay_phone', cleanPhone);
                 setScreen('pin_login');
             };
 
@@ -123,9 +120,9 @@
                 if (fullPin.length < 4) return alert('Saisissez 4 chiffres.');
 
                 const cleanPhone = phone.trim();
-                localStorage.setItem('kaddupay_phone', cleanPhone);
                 localStorage.setItem('kaddupay_pin', fullPin);
 
+                // Connexion instantanée sans blocage réseau
                 db.ref('users/' + cleanPhone).once('value').then((snapshot) => {
                     const userData = snapshot.val();
                     if (!userData) {
@@ -139,6 +136,8 @@
                         });
                     }
                     setupCloudSync(cleanPhone);
+                    setScreen('dashboard');
+                }).catch(() => {
                     setScreen('dashboard');
                 });
             };
@@ -220,7 +219,8 @@
             };
 
             const logout = () => {
-                localStorage.clear();
+                localStorage.removeItem('kaddupay_phone');
+                localStorage.removeItem('kaddupay_pin');
                 setPhone('');
                 setPin(['', '', '', '']);
                 setScreen('phone');
@@ -228,7 +228,6 @@
 
             return (
                 <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
-                    {/* ÉCRAN TÉLÉPHONE */}
                     {screen === 'phone' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -251,7 +250,6 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN PIN */}
                     {screen === 'pin_login' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -273,7 +271,6 @@
                         </div>
                     )}
 
-                    {/* TABLEAU DE BORD */}
                     {screen === 'dashboard' && (
                         <div className="flex flex-col h-full justify-between py-2 space-y-4 overflow-y-auto">
                             <div>
@@ -323,7 +320,6 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN PROFIL & KYC & QR CODE */}
                     {screen === 'profile' && (
                         <div className="flex flex-col justify-between h-full py-2 overflow-y-auto">
                             <div>
@@ -342,7 +338,6 @@
                                 <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center space-y-4">
                                     <p className="text-xs font-bold text-slate-400 uppercase">Mon QR Code de Réception</p>
                                     <div className="bg-white p-4 rounded-2xl w-40 h-40 mx-auto flex flex-col items-center justify-center shadow-inner">
-                                        {/* Simulation visuelle de QR Code Pro */}
                                         <div className="w-32 h-32 bg-slate-900 rounded-lg p-2 flex flex-col justify-between items-center text-white text-[9px] font-mono text-center">
                                             <div className="bg-orange-500 w-full py-1 font-bold rounded">KAADUPAY QR</div>
                                             <div className="tracking-widest font-extrabold">+221 {phone}</div>
@@ -355,7 +350,6 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN PARAMÈTRES / SÉCURITÉ PIN */}
                     {screen === 'settings' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
@@ -375,7 +369,6 @@
                         </div>
                     )}
 
-                    {/* ENVOI D'ARGENT */}
                     {screen === 'send' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
