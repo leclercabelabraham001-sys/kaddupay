@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KàdduPay - Le paiement 100% gratuit</title>
+    <title>KàdduPay - Paiement Mobile Sans Frais au Sénégal</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -36,20 +36,30 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Composant du Logo Officiel "KP" (Choix #4 exact)
-        const KadduPayLogo = ({ className = "h-10" }) => (
-            <div className={`flex items-center space-x-2.5 ${className}`}>
-                {/* Icône KP vectorielle stylisée */}
-                <svg viewBox="0 0 100 80" className="h-full w-auto flex-shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Branche "K" Orange avec flèche */}
-                    <path d="M15 10V70M15 42L45 10H60L30 42M45 42L25 22" stroke="#F97316" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-                    {/* Boucle "P" Bleu Marine entrelacée */}
-                    <path d="M40 42C55 42 65 32 65 20C65 8 55 10 38 10H30V70" stroke="#1E3A8A" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
+        // Logo Officiel KàdduPay : "K" Sculpté avec Silhouette Mascotte
+        const KadduPayLogo = ({ className = "h-12" }) => (
+            <div className={`flex items-center space-x-3 ${className}`}>
+                {/* Icône du K sculpté premium avec mascotte incorporée */}
+                <svg viewBox="0 0 100 110" className="h-full w-auto flex-shrink-0 drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Cadre du K en relief or/bronze */}
+                    <path d="M15 10H42V100H15Z" fill="#C27838" />
+                    <path d="M20 15H37V95H20Z" fill="#1E293B" />
+                    <path d="M42 55L78 10H100L58 60L100 100H76L42 58V55Z" fill="#C27838" />
+                    
+                    {/* Branched K supérieure intégrant la mascotte */}
+                    <path d="M42 50L75 15H88L55 52Z" fill="#1E3A8A" />
+                    <path d="M52 56L85 95H72L42 60Z" fill="#1E3A8A" />
+                    
+                    {/* Tête & Bec de la Mascotte intégrés dans le K */}
+                    <path d="M68 22C68 22 75 18 82 24C86 27 84 32 80 34C75 36 70 32 68 22Z" fill="#F97316" />
+                    <circle cx="76" cy="25" r="2.5" fill="#FFFFFF" />
+                    <polygon points="82,26 90,28 83,31" fill="#F97316" />
                 </svg>
-                {/* Texte KàdduPay */}
+
+                {/* Typographie KàdduPay */}
                 <div className="flex flex-col justify-center leading-none">
-                    <span className="font-extrabold text-xl tracking-tight text-[#F97316]">Kàddu</span>
-                    <span className="font-extrabold text-xl tracking-tight text-[#38BDF8] -mt-1">Pay</span>
+                    <span className="font-extrabold text-2xl tracking-tight text-[#F97316]">Kàddu</span>
+                    <span className="font-extrabold text-2xl tracking-tight text-[#1E3A8A] mt-0.5">Pay</span>
                 </div>
             </div>
         );
@@ -90,7 +100,7 @@
 
             const handlePhoneSubmit = (e) => {
                 e.preventDefault();
-                if (!phone || phone.length < 8) return alert('Veuillez entrer un numéro valide.');
+                if (!phone || phone.length < 8) return alert('Veuillez entrer un numéro sénégalais valide.');
                 
                 const existingPhone = localStorage.getItem('kaddupay_phone');
                 if (existingPhone === phone) {
@@ -170,23 +180,23 @@
             return (
                 <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
                     
-                    {/* 1. ÉCRAN NUMÉRO DE TÉLÉPHONE */}
+                    {/* ÉCRAN 1 : SAISIE NUMÉRO */}
                     {screen === 'phone' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
                                 <div className="pt-2">
-                                    <KadduPayLogo className="h-12" />
+                                    <KadduPayLogo className="h-14" />
                                 </div>
 
                                 <div className="mt-12 space-y-3">
                                     <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
-                                        ⚡ Simple, Instantané & 0 Frais
+                                        ⚡ Le transfert instantané à 0 FCFA
                                     </div>
                                     <h1 className="text-3xl font-extrabold tracking-tight text-white">
                                         Entrez votre numéro
                                     </h1>
                                     <p className="text-slate-400 text-sm">
-                                        Pour accéder à votre solde ou créer votre compte KàdduPay.
+                                        Connectez-vous ou créez votre compte KàdduPay en un instant.
                                     </p>
                                 </div>
 
@@ -217,7 +227,7 @@
                         </div>
                     )}
 
-                    {/* 2. ÉCRAN CODE SECRET (PIN 4 CHIFFRES) */}
+                    {/* ÉCRAN 2 : CODE PIN */}
                     {(screen === 'pin_setup' || screen === 'pin_login') && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
@@ -227,13 +237,13 @@
 
                                 <div className="mt-8 space-y-2 text-center">
                                     <div className="flex justify-center mb-4">
-                                        <KadduPayLogo className="h-10" />
+                                        <KadduPayLogo className="h-12" />
                                     </div>
                                     <h1 className="text-2xl font-bold tracking-tight text-white">
-                                        {screen === 'pin_setup' ? 'Créez votre code secret' : 'Entrez votre code secret'}
+                                        {screen === 'pin_setup' ? 'Définissez votre code secret' : 'Entrez votre code secret'}
                                     </h1>
                                     <p className="text-slate-400 text-sm">
-                                        {screen === 'pin_setup' ? 'Définissez 4 chiffres pour sécuriser votre compte.' : '+221 ' + phone}
+                                        {screen === 'pin_setup' ? 'Choisissez 4 chiffres pour sécuriser l\'accès.' : '+221 ' + phone}
                                     </p>
                                 </div>
 
@@ -256,22 +266,22 @@
                                         type="submit"
                                         className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base"
                                     >
-                                        Confirmer le code secret
+                                        Confirmer
                                     </button>
                                 </form>
                             </div>
-                            <p className="text-xs text-center text-slate-500">Sécurité KàdduPay</p>
+                            <p className="text-xs text-center text-slate-500">Sécurité bancaire KàdduPay</p>
                         </div>
                     )}
 
-                    {/* 3. TABLEAU DE BORD CLIENT */}
+                    {/* ÉCRAN 3 : DASHBOARD */}
                     {screen === 'dashboard' && (
                         <div className="flex flex-col h-full justify-between py-2 space-y-6 overflow-y-auto">
                             <div>
                                 <div className="flex items-center justify-between">
-                                    <KadduPayLogo className="h-9" />
+                                    <KadduPayLogo className="h-10" />
                                     <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">
-                                        Verrouiller
+                                        Quitter
                                     </button>
                                 </div>
 
@@ -281,7 +291,7 @@
                                         {balance.toLocaleString('fr-FR')} <span className="text-orange-400 text-xl">FCFA</span>
                                     </div>
                                     <div className="mt-4 inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-emerald-400 text-xs font-semibold">
-                                        ✓ 0 FCFA de frais sur les transferts
+                                        ✓ 0 FCFA de frais garanti
                                     </div>
                                 </div>
 
@@ -294,7 +304,7 @@
                                         <span>Envoyer</span>
                                     </button>
                                     <button 
-                                        onClick={() => alert('Option de dépôt / recharge.')}
+                                        onClick={() => alert('Fonctionnalité de dépôt en cours.')}
                                         className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2 active:scale-[0.98] transition-transform"
                                     >
                                         <i data-lucide="download" className="w-6 h-6 text-orange-400"></i>
@@ -322,7 +332,7 @@
                         </div>
                     )}
 
-                    {/* 4. ÉCRAN D'ENVOI D'ARGENT */}
+                    {/* ÉCRAN 4 : ENVOYER DE L'ARGENT */}
                     {screen === 'send' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
@@ -335,7 +345,7 @@
                                         Envoyer de l'argent
                                     </h1>
                                     <p className="text-slate-400 text-sm">
-                                        Zéro frais de transfert.
+                                        Frais de transfert : 0 FCFA.
                                     </p>
                                 </div>
 
@@ -370,7 +380,7 @@
                                     </div>
 
                                     <div className="bg-slate-800/40 border border-slate-800/80 p-4 rounded-2xl flex items-center justify-between text-sm">
-                                        <span className="text-slate-400">Frais</span>
+                                        <span className="text-slate-400">Frais de transaction</span>
                                         <span className="text-emerald-400 font-bold">0 FCFA</span>
                                     </div>
 
@@ -378,7 +388,7 @@
                                         type="submit"
                                         className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base mt-4"
                                     >
-                                        Envoyer
+                                        Confirmer l'envoi
                                     </button>
                                 </form>
                             </div>
