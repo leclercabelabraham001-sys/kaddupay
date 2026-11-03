@@ -13,6 +13,9 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -36,27 +39,36 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Logo Officiel KàdduPay : "K" Sculpté avec Silhouette Mascotte
+        // --- CONFIGURATION FIREBASE OFFICIELLE KAADDUPAY ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDqqIU5pOJtYJsMW5cvPPg3kTa0IAUsXhQ",
+            authDomain: "kaadupay.firebaseapp.com",
+            databaseURL: "https://kaadupay-default-rtdb.firebaseio.com",
+            projectId: "kaadupay",
+            storageBucket: "kaadupay.firebasestorage.app",
+            messagingSenderId: "996765843976",
+            appId: "1:996765843976:web:fa4312ffef199add3007bd",
+            measurementId: "G-SWYYHXPXR5"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // Logo Officiel KàdduPay validé : K sculpté avec silhouette mascotte intégrée
         const KadduPayLogo = ({ className = "h-12" }) => (
             <div className={`flex items-center space-x-3 ${className}`}>
-                {/* Icône du K sculpté premium avec mascotte incorporée */}
                 <svg viewBox="0 0 100 110" className="h-full w-auto flex-shrink-0 drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Cadre du K en relief or/bronze */}
                     <path d="M15 10H42V100H15Z" fill="#C27838" />
                     <path d="M20 15H37V95H20Z" fill="#1E293B" />
                     <path d="M42 55L78 10H100L58 60L100 100H76L42 58V55Z" fill="#C27838" />
-                    
-                    {/* Branched K supérieure intégrant la mascotte */}
                     <path d="M42 50L75 15H88L55 52Z" fill="#1E3A8A" />
                     <path d="M52 56L85 95H72L42 60Z" fill="#1E3A8A" />
-                    
-                    {/* Tête & Bec de la Mascotte intégrés dans le K */}
                     <path d="M68 22C68 22 75 18 82 24C86 27 84 32 80 34C75 36 70 32 68 22Z" fill="#F97316" />
                     <circle cx="76" cy="25" r="2.5" fill="#FFFFFF" />
                     <polygon points="82,26 90,28 83,31" fill="#F97316" />
                 </svg>
-
-                {/* Typographie KàdduPay */}
                 <div className="flex flex-col justify-center leading-none">
                     <span className="font-extrabold text-2xl tracking-tight text-[#F97316]">Kàddu</span>
                     <span className="font-extrabold text-2xl tracking-tight text-[#1E3A8A] mt-0.5">Pay</span>
@@ -72,64 +84,74 @@
             const [balance, setBalance] = useState(150000);
             const [recipient, setRecipient] = useState('');
             const [amount, setAmount] = useState('');
-            const [transactions, setTransactions] = useState([
-                { id: 1, type: 'reception', name: 'Moussa Diop', amount: '+ 25 000 FCFA', date: 'Aujourd\'hui 14:30' }
-            ]);
+            const [transactions, setTransactions] = useState([]);
 
+            // Synchronisation temps réel Firebase
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
+
                 const savedPhone = localStorage.getItem('kaddupay_phone');
                 const savedPin = localStorage.getItem('kaddupay_pin');
-                const savedBalance = localStorage.getItem('kaddupay_balance');
-                const savedTx = localStorage.getItem('kaddupay_tx');
 
                 if (savedPhone && savedPin) {
                     setPhone(savedPhone);
-                    setBalance(savedBalance ? Number(savedBalance) : 150000);
-                    if (savedTx) setTransactions(JSON.parse(savedTx));
                     setScreen('pin_login');
+
+                    const userRef = db.ref('users/' + savedPhone);
+                    userRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            setBalance(data.balance ?? 150000);
+                            setTransactions(data.transactions ? Object.values(data.transactions) : []);
+                        }
+                    });
                 }
             }, []);
 
-            const updateStorage = (newBalance, newTx) => {
-                localStorage.setItem('kaddupay_balance', newBalance);
-                localStorage.setItem('kaddupay_tx', JSON.stringify(newTx));
-            };
-
             const handlePhoneSubmit = (e) => {
                 e.preventDefault();
-                if (!phone || phone.length < 8) return alert('Veuillez entrer un numéro sénégalais valide.');
+                if (!phone || phone.length < 8) return alert('Veuillez entrer un numéro valide.');
                 
-                const existingPhone = localStorage.getItem('kaddupay_phone');
-                if (existingPhone === phone) {
-                    setScreen('pin_login');
-                } else {
-                    setScreen('pin_setup');
-                }
+                db.ref('users/' + phone).once('value', (snapshot) => {
+                    const userData = snapshot.val();
+                    if (userData) {
+                        setScreen('pin_login');
+                    } else {
+                        setScreen('pin_setup');
+                    }
+                });
             };
 
             const handlePinSubmit = (e) => {
                 e.preventDefault();
                 const fullPin = pin.join('');
-                if (fullPin.length < 4) {
-                    return alert('Veuillez saisir votre code à 4 chiffres.');
-                }
+                if (fullPin.length < 4) return alert('Saisissez un code à 4 chiffres.');
 
                 if (screen === 'pin_setup') {
-                    localStorage.setItem('kaddupay_phone', phone);
-                    localStorage.setItem('kaddupay_pin', fullPin);
-                    updateStorage(balance, transactions);
-                    setScreen('dashboard');
-                } else if (screen === 'pin_login') {
-                    const savedPin = localStorage.getItem('kaddupay_pin');
-                    if (fullPin === savedPin) {
+                    const initialData = {
+                        pin: fullPin,
+                        balance: 150000,
+                        transactions: {
+                            1: { id: 1, type: 'reception', name: 'KàdduPay Bonus', amount: '+ 150 000 FCFA', date: 'Bienvenue' }
+                        }
+                    };
+                    db.ref('users/' + phone).set(initialData).then(() => {
+                        localStorage.setItem('kaddupay_phone', phone);
+                        localStorage.setItem('kaddupay_pin', fullPin);
                         setScreen('dashboard');
-                    } else {
-                        alert('Code secret incorrect.');
-                        setPin(['', '', '', '']);
-                    }
+                    });
+                } else if (screen === 'pin_login') {
+                    db.ref('users/' + phone + '/pin').once('value', (snapshot) => {
+                        const correctPin = snapshot.val();
+                        if (fullPin === correctPin) {
+                            localStorage.setItem('kaddupay_phone', phone);
+                            localStorage.setItem('kaddupay_pin', fullPin);
+                            setScreen('dashboard');
+                        } else {
+                            alert('Code secret incorrect.');
+                            setPin(['', '', '', '']);
+                        }
+                    });
                 }
             };
 
@@ -137,10 +159,8 @@
                 const newPin = [...pin];
                 newPin[index] = val;
                 setPin(newPin);
-
                 if (val && index < 3) {
-                    const nextInput = document.getElementById(`pin-${index + 1}`);
-                    if (nextInput) nextInput.focus();
+                    document.getElementById(`pin-${index + 1}`)?.focus();
                 }
             };
 
@@ -148,26 +168,53 @@
                 e.preventDefault();
                 const numericAmount = Number(amount);
                 if (!recipient || !numericAmount || numericAmount <= 0) {
-                    return alert('Veuillez remplir correctement les informations.');
+                    return alert('Remplissez tous les champs correctement.');
                 }
                 if (numericAmount > balance) {
                     return alert('Solde insuffisant.');
                 }
-                
-                const newBalance = balance - numericAmount;
-                const newTxList = [
-                    { id: Date.now(), type: 'envoi', name: recipient, amount: `- ${numericAmount.toLocaleString('fr-FR')} FCFA`, date: 'À l\'instant' },
-                    ...transactions
-                ];
 
-                setBalance(newBalance);
-                setTransactions(newTxList);
-                updateStorage(newBalance, newTxList);
+                const senderRef = db.ref('users/' + phone);
+                const receiverRef = db.ref('users/' + recipient);
 
-                alert('Transfert de ' + numericAmount.toLocaleString('fr-FR') + ' FCFA effectué avec succès sans aucun frais !');
-                setRecipient('');
-                setAmount('');
-                setScreen('dashboard');
+                receiverRef.once('value', (snapshot) => {
+                    const receiverData = snapshot.val();
+                    if (!receiverData) {
+                        return alert('Le numéro destinataire ' + recipient + ' n\'existe pas sur KàdduPay.');
+                    }
+
+                    const txId = Date.now();
+                    const nowStr = 'À l\'instant';
+
+                    const newSenderBalance = balance - numericAmount;
+                    const newTxSender = {
+                        id: txId,
+                        type: 'envoi',
+                        name: recipient,
+                        amount: `- ${numericAmount.toLocaleString('fr-FR')} FCFA`,
+                        date: nowStr
+                    };
+
+                    const newReceiverBalance = (receiverData.balance || 0) + numericAmount;
+                    const newTxReceiver = {
+                        id: txId,
+                        type: 'reception',
+                        name: phone,
+                        amount: `+ ${numericAmount.toLocaleString('fr-FR')} FCFA`,
+                        date: nowStr
+                    };
+
+                    senderRef.update({ balance: newSenderBalance });
+                    senderRef.child('transactions').push(newTxSender);
+
+                    receiverRef.update({ balance: newReceiverBalance });
+                    receiverRef.child('transactions').push(newTxReceiver);
+
+                    alert('Transfert de ' + numericAmount.toLocaleString('fr-FR') + ' FCFA réussi avec 0 FCFA de frais !');
+                    setRecipient('');
+                    setAmount('');
+                    setScreen('dashboard');
+                });
             };
 
             const logout = () => {
@@ -179,146 +226,83 @@
 
             return (
                 <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
-                    
-                    {/* ÉCRAN 1 : SAISIE NUMÉRO */}
+                    {/* ÉCRAN TÉLÉPHONE */}
                     {screen === 'phone' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
-                                <div className="pt-2">
-                                    <KadduPayLogo className="h-14" />
-                                </div>
-
+                                <div className="pt-2"><KadduPayLogo className="h-14" /></div>
                                 <div className="mt-12 space-y-3">
                                     <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
-                                        ⚡ Le transfert instantané à 0 FCFA
+                                        ⚡ Temps Réel & 0 Frais
                                     </div>
-                                    <h1 className="text-3xl font-extrabold tracking-tight text-white">
-                                        Entrez votre numéro
-                                    </h1>
-                                    <p className="text-slate-400 text-sm">
-                                        Connectez-vous ou créez votre compte KàdduPay en un instant.
-                                    </p>
+                                    <h1 className="text-3xl font-extrabold text-white">Entrez votre numéro</h1>
+                                    <p className="text-slate-400 text-sm">Connectez-vous pour tester les transferts croisés.</p>
                                 </div>
-
                                 <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-4">
-                                    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4 focus-within:border-orange-500 transition-colors">
-                                        <div className="flex items-center space-x-2 pr-3 border-r border-slate-700">
-                                            <span className="text-lg">🇸🇳</span>
-                                            <span className="text-sm font-semibold text-slate-200">+221</span>
-                                        </div>
-                                        <input 
-                                            type="tel" 
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            placeholder="77 000 00 00" 
-                                            className="bg-transparent pl-3 w-full text-white placeholder-slate-500 focus:outline-none text-lg font-bold"
-                                            required
-                                        />
+                                    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
+                                        <span className="text-lg pr-3 border-r border-slate-700">🇸🇳 +221</span>
+                                        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 000 00 00" className="bg-transparent pl-3 w-full text-white focus:outline-none text-lg font-bold" required />
                                     </div>
-
-                                    <button 
-                                        type="submit"
-                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base mt-6"
-                                    >
-                                        Continuer
-                                    </button>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-6 shadow-lg">Continuer</button>
                                 </form>
                             </div>
                         </div>
                     )}
 
-                    {/* ÉCRAN 2 : CODE PIN */}
+                    {/* ÉCRAN PIN */}
                     {(screen === 'pin_setup' || screen === 'pin_login') && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
-                                <button onClick={() => setScreen('phone')} className="text-slate-400 text-sm flex items-center space-x-1 pt-2">
-                                    <span>← Retour</span>
-                                </button>
-
+                                <button onClick={() => setScreen('phone')} className="text-slate-400 text-sm pt-2">← Retour</button>
                                 <div className="mt-8 space-y-2 text-center">
-                                    <div className="flex justify-center mb-4">
-                                        <KadduPayLogo className="h-12" />
-                                    </div>
-                                    <h1 className="text-2xl font-bold tracking-tight text-white">
-                                        {screen === 'pin_setup' ? 'Définissez votre code secret' : 'Entrez votre code secret'}
-                                    </h1>
-                                    <p className="text-slate-400 text-sm">
-                                        {screen === 'pin_setup' ? 'Choisissez 4 chiffres pour sécuriser l\'accès.' : '+221 ' + phone}
-                                    </p>
+                                    <div className="flex justify-center mb-4"><KadduPayLogo className="h-12" /></div>
+                                    <h1 className="text-2xl font-bold text-white">{screen === 'pin_setup' ? 'Créer votre code secret' : 'Entrez votre code'}</h1>
+                                    <p className="text-slate-400 text-sm">+221 {phone}</p>
                                 </div>
-
                                 <form onSubmit={handlePinSubmit} className="mt-8 space-y-8">
                                     <div className="flex justify-center space-x-3">
                                         {[0, 1, 2, 3].map((index) => (
-                                            <input 
-                                                id={`pin-${index}`}
-                                                key={index}
-                                                type="password" 
-                                                maxLength="1"
-                                                value={pin[index]}
-                                                onChange={(e) => handlePinInput(e.target.value, index)}
-                                                className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl text-center text-3xl font-bold text-white focus:border-orange-500 focus:outline-none"
-                                            />
+                                            <input id={`pin-${index}`} key={index} type="password" maxLength="1" value={pin[index]} onChange={(e) => handlePinInput(e.target.value, index)} className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl text-center text-3xl font-bold text-white focus:border-orange-500 focus:outline-none" />
                                         ))}
                                     </div>
-
-                                    <button 
-                                        type="submit"
-                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base"
-                                    >
-                                        Confirmer
-                                    </button>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg">Confirmer</button>
                                 </form>
                             </div>
-                            <p className="text-xs text-center text-slate-500">Sécurité bancaire KàdduPay</p>
                         </div>
                     )}
 
-                    {/* ÉCRAN 3 : DASHBOARD */}
+                    {/* TABLEAU DE BORD */}
                     {screen === 'dashboard' && (
                         <div className="flex flex-col h-full justify-between py-2 space-y-6 overflow-y-auto">
                             <div>
                                 <div className="flex items-center justify-between">
                                     <KadduPayLogo className="h-10" />
-                                    <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">
-                                        Quitter
-                                    </button>
+                                    <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">Quitter</button>
                                 </div>
-
-                                <div className="mt-6 bg-gradient-to-br from-slate-800 via-slate-800/90 to-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-center">
-                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Solde disponible (+221 {phone})</p>
-                                    <div className="text-4xl font-extrabold text-white mt-2 tracking-tight">
+                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center shadow-xl">
+                                    <p className="text-xs font-semibold text-slate-400 uppercase">Solde (+221 {phone})</p>
+                                    <div className="text-4xl font-extrabold text-white mt-2">
                                         {balance.toLocaleString('fr-FR')} <span className="text-orange-400 text-xl">FCFA</span>
                                     </div>
                                     <div className="mt-4 inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-emerald-400 text-xs font-semibold">
-                                        ✓ 0 FCFA de frais garanti
+                                        ✓ Synchro Cloud en direct
                                     </div>
                                 </div>
-
                                 <div className="grid grid-cols-2 gap-4 mt-6">
-                                    <button 
-                                        onClick={() => setScreen('send')}
-                                        className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2 shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-transform"
-                                    >
-                                        <i data-lucide="send" className="w-6 h-6"></i>
-                                        <span>Envoyer</span>
+                                    <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2">
+                                        <i data-lucide="send" className="w-6 h-6"></i><span>Envoyer</span>
                                     </button>
-                                    <button 
-                                        onClick={() => alert('Fonctionnalité de dépôt en cours.')}
-                                        className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2 active:scale-[0.98] transition-transform"
-                                    >
-                                        <i data-lucide="download" className="w-6 h-6 text-orange-400"></i>
-                                        <span>Recharger</span>
+                                    <button onClick={() => alert('Dépôt test')} className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2">
+                                        <i data-lucide="download" className="w-6 h-6 text-orange-400"></i><span>Recharger</span>
                                     </button>
                                 </div>
-
                                 <div className="mt-8 space-y-4">
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Historique</h3>
+                                    <h3 className="text-sm font-bold uppercase text-slate-400">Historique en temps réel</h3>
                                     <div className="space-y-3">
                                         {transactions.map(tx => (
                                             <div key={tx.id} className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
                                                 <div>
-                                                    <p className="font-semibold text-sm text-white">{tx.name}</p>
+                                                    <p className="font-semibold text-sm text-white">Contact : {tx.name}</p>
                                                     <p className="text-xs text-slate-500">{tx.date}</p>
                                                 </div>
                                                 <span className={`font-bold text-sm ${tx.type === 'reception' ? 'text-emerald-400' : 'text-slate-200'}`}>
@@ -332,73 +316,32 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN 4 : ENVOYER DE L'ARGENT */}
+                    {/* ENVOI D'ARGENT */}
                     {screen === 'send' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm flex items-center space-x-1 pt-2">
-                                    <span>← Retour</span>
-                                </button>
-
+                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
                                 <div className="mt-6 space-y-2">
-                                    <h1 className="text-2xl font-bold tracking-tight text-white">
-                                        Envoyer de l'argent
-                                    </h1>
-                                    <p className="text-slate-400 text-sm">
-                                        Frais de transfert : 0 FCFA.
-                                    </p>
+                                    <h1 className="text-2xl font-bold text-white">Envoyer de l'argent</h1>
+                                    <p className="text-slate-400 text-sm">Vers un autre compte KàdduPay.</p>
                                 </div>
-
                                 <form onSubmit={handleSendMoney} className="mt-6 space-y-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Destinataire</label>
-                                        <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 focus-within:border-orange-500 transition-colors">
-                                            <input 
-                                                type="text" 
-                                                value={recipient}
-                                                onChange={(e) => setRecipient(e.target.value)}
-                                                placeholder="77 000 00 00 ou Nom" 
-                                                className="bg-transparent w-full text-white placeholder-slate-500 focus:outline-none text-base font-semibold"
-                                                required
-                                            />
-                                        </div>
+                                        <label className="text-xs font-semibold text-slate-300 uppercase">Numéro du destinataire</label>
+                                        <input type="tel" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="786303976" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-white focus:outline-none" required />
                                     </div>
-
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Montant (FCFA)</label>
-                                        <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 focus-within:border-orange-500 transition-colors">
-                                            <input 
-                                                type="number" 
-                                                value={amount}
-                                                onChange={(e) => setAmount(e.target.value)}
-                                                placeholder="0" 
-                                                className="bg-transparent w-full text-2xl font-bold text-white placeholder-slate-600 focus:outline-none"
-                                                required
-                                            />
-                                            <span className="text-slate-400 font-semibold pl-2">FCFA</span>
-                                        </div>
+                                        <label className="text-xs font-semibold text-slate-300 uppercase">Montant (FCFA)</label>
+                                        <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold text-white focus:outline-none" required />
                                     </div>
-
-                                    <div className="bg-slate-800/40 border border-slate-800/80 p-4 rounded-2xl flex items-center justify-between text-sm">
-                                        <span className="text-slate-400">Frais de transaction</span>
-                                        <span className="text-emerald-400 font-bold">0 FCFA</span>
-                                    </div>
-
-                                    <button 
-                                        type="submit"
-                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base mt-4"
-                                    >
-                                        Confirmer l'envoi
-                                    </button>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4">Transférer instantanément</button>
                                 </form>
                             </div>
                         </div>
                     )}
-
                 </div>
             );
         }
-
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
