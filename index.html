@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KàdduPay</title>
+    <title>KàdduPay - Le paiement 100% gratuit</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -36,8 +36,26 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // Composant du Logo Officiel "KP" (Choix #4 exact)
+        const KadduPayLogo = ({ className = "h-10" }) => (
+            <div className={`flex items-center space-x-2.5 ${className}`}>
+                {/* Icône KP vectorielle stylisée */}
+                <svg viewBox="0 0 100 80" className="h-full w-auto flex-shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Branche "K" Orange avec flèche */}
+                    <path d="M15 10V70M15 42L45 10H60L30 42M45 42L25 22" stroke="#F97316" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
+                    {/* Boucle "P" Bleu Marine entrelacée */}
+                    <path d="M40 42C55 42 65 32 65 20C65 8 55 10 38 10H30V70" stroke="#1E3A8A" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {/* Texte KàdduPay */}
+                <div className="flex flex-col justify-center leading-none">
+                    <span className="font-extrabold text-xl tracking-tight text-[#F97316]">Kàddu</span>
+                    <span className="font-extrabold text-xl tracking-tight text-[#38BDF8] -mt-1">Pay</span>
+                </div>
+            </div>
+        );
+
         function App() {
-            const [screen, setScreen] = useState('phone'); // 'phone', 'pin_setup', 'pin_login', 'dashboard', 'send'
+            const [screen, setScreen] = useState('phone');
             const [phone, setPhone] = useState('');
             const [pin, setPin] = useState(['', '', '', '']);
             
@@ -72,7 +90,7 @@
 
             const handlePhoneSubmit = (e) => {
                 e.preventDefault();
-                if (!phone || phone.length < 9) return alert('Veuillez entrer un numéro valide.');
+                if (!phone || phone.length < 8) return alert('Veuillez entrer un numéro valide.');
                 
                 const existingPhone = localStorage.getItem('kaddupay_phone');
                 if (existingPhone === phone) {
@@ -82,15 +100,21 @@
                 }
             };
 
-            const handlePinComplete = (enteredPinString) => {
+            const handlePinSubmit = (e) => {
+                e.preventDefault();
+                const fullPin = pin.join('');
+                if (fullPin.length < 4) {
+                    return alert('Veuillez saisir votre code à 4 chiffres.');
+                }
+
                 if (screen === 'pin_setup') {
                     localStorage.setItem('kaddupay_phone', phone);
-                    localStorage.setItem('kaddupay_pin', enteredPinString);
+                    localStorage.setItem('kaddupay_pin', fullPin);
                     updateStorage(balance, transactions);
                     setScreen('dashboard');
                 } else if (screen === 'pin_login') {
                     const savedPin = localStorage.getItem('kaddupay_pin');
-                    if (enteredPinString === savedPin) {
+                    if (fullPin === savedPin) {
                         setScreen('dashboard');
                     } else {
                         alert('Code secret incorrect.');
@@ -107,14 +131,6 @@
                 if (val && index < 3) {
                     const nextInput = document.getElementById(`pin-${index + 1}`);
                     if (nextInput) nextInput.focus();
-                }
-
-                const fullPin = newPin.join('');
-                if (fullPin.length === 4) {
-                    setTimeout(() => {
-                        handlePinComplete(fullPin);
-                        setPin(['', '', '', '']);
-                    }, 200);
                 }
             };
 
@@ -138,7 +154,7 @@
                 setTransactions(newTxList);
                 updateStorage(newBalance, newTxList);
 
-                alert('Transfert de ' + numericAmount.toLocaleString('fr-FR') + ' FCFA validé avec succès (0 FCFA de frais) !');
+                alert('Transfert de ' + numericAmount.toLocaleString('fr-FR') + ' FCFA effectué avec succès sans aucun frais !');
                 setRecipient('');
                 setAmount('');
                 setScreen('dashboard');
@@ -154,26 +170,23 @@
             return (
                 <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
                     
-                    {/* 1. SAISIE DU NUMÉRO */}
+                    {/* 1. ÉCRAN NUMÉRO DE TÉLÉPHONE */}
                     {screen === 'phone' && (
                         <div className="flex flex-col justify-between h-full py-4">
                             <div>
-                                <div className="flex items-center space-x-3 pt-2">
-                                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-600/30">
-                                        <span className="text-white font-bold text-xl">K</span>
-                                    </div>
-                                    <span className="font-bold text-xl tracking-tight text-white">KàdduPay</span>
+                                <div className="pt-2">
+                                    <KadduPayLogo className="h-12" />
                                 </div>
 
                                 <div className="mt-12 space-y-3">
                                     <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
-                                        ⚡ Simple, Rapide, 0 Frais
+                                        ⚡ Simple, Instantané & 0 Frais
                                     </div>
                                     <h1 className="text-3xl font-extrabold tracking-tight text-white">
                                         Entrez votre numéro
                                     </h1>
                                     <p className="text-slate-400 text-sm">
-                                        Pour vous connecter ou créer votre compte KàdduPay en toute sécurité.
+                                        Pour accéder à votre solde ou créer votre compte KàdduPay.
                                     </p>
                                 </div>
 
@@ -204,63 +217,66 @@
                         </div>
                     )}
 
-                    {/* 2. CODE SECRET (PIN 4 CHIFFRES TYPE WAVE) */}
+                    {/* 2. ÉCRAN CODE SECRET (PIN 4 CHIFFRES) */}
                     {(screen === 'pin_setup' || screen === 'pin_login') && (
-                        <div className="flex flex-col justify-between h-full py-4 text-center">
+                        <div className="flex flex-col justify-between h-full py-4">
                             <div>
                                 <button onClick={() => setScreen('phone')} className="text-slate-400 text-sm flex items-center space-x-1 pt-2">
                                     <span>← Retour</span>
                                 </button>
 
-                                <div className="mt-10 space-y-2">
+                                <div className="mt-8 space-y-2 text-center">
+                                    <div className="flex justify-center mb-4">
+                                        <KadduPayLogo className="h-10" />
+                                    </div>
                                     <h1 className="text-2xl font-bold tracking-tight text-white">
                                         {screen === 'pin_setup' ? 'Créez votre code secret' : 'Entrez votre code secret'}
                                     </h1>
                                     <p className="text-slate-400 text-sm">
-                                        {screen === 'pin_setup' ? '4 chiffres pour sécuriser votre compte.' : '+221 ' + phone}
+                                        {screen === 'pin_setup' ? 'Définissez 4 chiffres pour sécuriser votre compte.' : '+221 ' + phone}
                                     </p>
                                 </div>
 
-                                <div className="flex justify-center space-x-4 mt-10">
-                                    {[0, 1, 2, 3].map((index) => (
-                                        <input 
-                                            id={`pin-${index}`}
-                                            key={index}
-                                            type="password" 
-                                            maxLength="1"
-                                            value={pin[index]}
-                                            onChange={(e) => handlePinInput(e.target.value, index)}
-                                            className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl text-center text-3xl font-bold text-white focus:border-orange-500 focus:outline-none"
-                                        />
-                                    ))}
-                                </div>
+                                <form onSubmit={handlePinSubmit} className="mt-8 space-y-8">
+                                    <div className="flex justify-center space-x-3">
+                                        {[0, 1, 2, 3].map((index) => (
+                                            <input 
+                                                id={`pin-${index}`}
+                                                key={index}
+                                                type="password" 
+                                                maxLength="1"
+                                                value={pin[index]}
+                                                onChange={(e) => handlePinInput(e.target.value, index)}
+                                                className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl text-center text-3xl font-bold text-white focus:border-orange-500 focus:outline-none"
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <button 
+                                        type="submit"
+                                        className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-600/30 active:scale-[0.99] transition-transform text-base"
+                                    >
+                                        Confirmer le code secret
+                                    </button>
+                                </form>
                             </div>
-                            <p className="text-xs text-slate-500">Sécurité instantanée KàdduPay</p>
+                            <p className="text-xs text-center text-slate-500">Sécurité KàdduPay</p>
                         </div>
                     )}
 
-                    {/* 3. TABLEAU DE BORD (ÉCRAN PRINCIPAL WAVE) */}
+                    {/* 3. TABLEAU DE BORD CLIENT */}
                     {screen === 'dashboard' && (
                         <div className="flex flex-col h-full justify-between py-2 space-y-6 overflow-y-auto">
                             <div>
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-11 h-11 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center font-bold text-orange-400">
-                                            KP
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-slate-400">Mon Compte</p>
-                                            <p className="text-sm font-bold text-white">+221 {phone}</p>
-                                        </div>
-                                    </div>
-                                    <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs">
+                                    <KadduPayLogo className="h-9" />
+                                    <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">
                                         Verrouiller
                                     </button>
                                 </div>
 
-                                {/* Solde Wave Style */}
                                 <div className="mt-6 bg-gradient-to-br from-slate-800 via-slate-800/90 to-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-center">
-                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Solde disponible</p>
+                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Solde disponible (+221 {phone})</p>
                                     <div className="text-4xl font-extrabold text-white mt-2 tracking-tight">
                                         {balance.toLocaleString('fr-FR')} <span className="text-orange-400 text-xl">FCFA</span>
                                     </div>
@@ -269,7 +285,6 @@
                                     </div>
                                 </div>
 
-                                {/* Actions Rapides Style Wave */}
                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                     <button 
                                         onClick={() => setScreen('send')}
@@ -279,7 +294,7 @@
                                         <span>Envoyer</span>
                                     </button>
                                     <button 
-                                        onClick={() => alert('Option de dépôt / recharge disponible.')}
+                                        onClick={() => alert('Option de dépôt / recharge.')}
                                         className="bg-slate-800 border border-slate-700 text-slate-200 p-4 rounded-2xl font-bold flex flex-col items-center justify-center space-y-2 active:scale-[0.98] transition-transform"
                                     >
                                         <i data-lucide="download" className="w-6 h-6 text-orange-400"></i>
@@ -287,7 +302,6 @@
                                     </button>
                                 </div>
 
-                                {/* Historique */}
                                 <div className="mt-8 space-y-4">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Historique</h3>
                                     <div className="space-y-3">
@@ -308,7 +322,7 @@
                         </div>
                     )}
 
-                    {/* 4. ENVOYER DE L'ARGENT */}
+                    {/* 4. ÉCRAN D'ENVOI D'ARGENT */}
                     {screen === 'send' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
