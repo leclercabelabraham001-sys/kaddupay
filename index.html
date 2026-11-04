@@ -15,6 +15,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- QRCode Generator Script -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Html5 Qrcode Scanner Script -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -83,7 +85,6 @@
             </div>
         );
 
-        // Composant QR Code Dynamique
         const DynamicQRCode = ({ value }) => {
             const qrContainerRef = useRef(null);
 
@@ -122,6 +123,7 @@
 
             const [transactions, setTransactions] = useState([]);
             const [newPinVal, setNewPinVal] = useState('');
+            const scannerRef = useRef(null);
 
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
@@ -132,6 +134,42 @@
                     setupCloudSync(savedPhone);
                 }
             }, []);
+
+            // Gestion du Scanner de Caméra QR Code
+            useEffect(() => {
+                if (screen === 'scan') {
+                    const html5QrCode = new Html5Qrcode("reader");
+                    scannerRef.current = html5QrCode;
+
+                    html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        (decodedText) => {
+                            // Format attendu : "kaddupay:+221771624412" ou juste le numéro
+                            let scannedNumber = decodedText;
+                            if (decodedText.includes(':')) {
+                                scannedNumber = decodedText.split(':')[1];
+                            }
+                            scannedNumber = scannedNumber.replace('+221', '').trim();
+
+                            html5QrCode.stop().then(() => {
+                                setRecipient(scannedNumber);
+                                setScreen('send');
+                            }).catch(err => console.error(err));
+                        },
+                        (errorMessage) => {
+                            // Erreur de scan en cours (ignorée pour laisser tourner la caméra)
+                        }
+                    ).catch(err => {
+                        console.error("Erreur d'accès à la caméra", err);
+                        alert("Impossible d'accéder à la caméra de votre téléphone.");
+                    });
+                } else {
+                    if (scannerRef.current) {
+                        scannerRef.current.stop().catch(() => {});
+                    }
+                }
+            }, [screen]);
 
             const setupCloudSync = (targetPhone) => {
                 db.ref('users/' + targetPhone).on('value', (snapshot) => {
@@ -401,17 +439,23 @@
                                         ✓ PayDunya Connecté (0 Frais)
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3 mt-5">
-                                    <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 shadow-lg text-xs">
+
+                                {/* BOUTONS D'ACTIONS PRINCIPAUX AVEC SCANNER CAMERA */}
+                                <div className="grid grid-cols-4 gap-2 mt-5">
+                                    <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 shadow-lg text-[11px]">
                                         <i data-lucide="send" className="w-5 h-5"></i><span>Envoyer</span>
                                     </button>
-                                    <button onClick={() => setScreen('deposit')} className="bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 text-xs">
+                                    <button onClick={() => setScreen('scan')} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 shadow-lg text-[11px]">
+                                        <i data-lucide="camera" className="w-5 h-5"></i><span>Scanner</span>
+                                    </button>
+                                    <button onClick={() => setScreen('deposit')} className="bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 text-[11px]">
                                         <i data-lucide="download" className="w-5 h-5 text-emerald-400"></i><span>Dépôt</span>
                                     </button>
-                                    <button onClick={() => setScreen('withdraw')} className="bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 text-xs">
+                                    <button onClick={() => setScreen('withdraw')} className="bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 text-[11px]">
                                         <i data-lucide="upload" className="w-5 h-5 text-orange-400"></i><span>Retrait</span>
                                     </button>
                                 </div>
+
                                 <div className="mt-6 space-y-3">
                                     <h3 className="text-sm font-bold uppercase text-slate-400">Historique récent</h3>
                                     <div className="space-y-3">
@@ -427,6 +471,22 @@
                                             </div>
                                         ))}
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ÉCRAN DE SCAN DE LA CAMÉRA */}
+                    {screen === 'scan' && (
+                        <div className="flex flex-col justify-between h-full py-2">
+                            <div>
+                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
+                                <div className="mt-4 text-center space-y-2">
+                                    <h1 className="text-2xl font-bold text-white">Scanner un QR Code</h1>
+                                    <p className="text-slate-400 text-sm">Pointez la caméra vers le QR code KàdduPay</p>
+                                </div>
+                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-4 overflow-hidden shadow-2xl flex justify-center items-center">
+                                    <div id="reader" className="w-full rounded-2xl overflow-hidden"></div>
                                 </div>
                             </div>
                         </div>
@@ -449,12 +509,9 @@
 
                                 <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center space-y-4">
                                     <p className="text-xs font-bold text-slate-400 uppercase">Mon QR Code de Réception</p>
-                                    
-                                    {/* VRAI QR CODE SCANNABLE GÉNÉRÉ EN TEMPS RÉEL */}
                                     <div className="bg-white p-4 rounded-2xl w-48 h-48 mx-auto flex flex-col items-center justify-center shadow-lg">
                                         <DynamicQRCode value={`kaddupay:+221${phone}`} />
                                     </div>
-                                    
                                     <p className="text-xs text-slate-400">Faites scanner ce code pour recevoir de l'argent instantanément.</p>
                                 </div>
 
