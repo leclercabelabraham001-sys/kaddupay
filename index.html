@@ -123,7 +123,7 @@
 
             const [transactions, setTransactions] = useState([]);
             const [newPinVal, setNewPinVal] = useState('');
-            const scannerRef = useRef(null);
+            const qrInstanceRef = useRef(null);
 
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
@@ -135,39 +135,60 @@
                 }
             }, []);
 
-            // Gestion du Scanner de Caméra QR Code
+            // Gestion ultra-sécurisée du Scanner QR Code
             useEffect(() => {
+                let isMounted = true;
+
                 if (screen === 'scan') {
-                    const html5QrCode = new Html5Qrcode("reader");
-                    scannerRef.current = html5QrCode;
+                    // Délai minimal pour que le DOM `#reader` soit prêt
+                    const timeoutId = setTimeout(() => {
+                        if (!document.getElementById("reader")) return;
+                        
+                        const html5QrCode = new Html5Qrcode("reader");
+                        qrInstanceRef.current = html5QrCode;
 
-                    html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (decodedText) => {
-                            // Format attendu : "kaddupay:+221771624412" ou juste le numéro
-                            let scannedNumber = decodedText;
-                            if (decodedText.includes(':')) {
-                                scannedNumber = decodedText.split(':')[1];
-                            }
-                            scannedNumber = scannedNumber.replace('+221', '').trim();
+                        html5QrCode.start(
+                            { facingMode: "environment" },
+                            { fps: 10, qrbox: { width: 220, height: 220 } },
+                            (decodedText) => {
+                                if (!isMounted) return;
 
-                            html5QrCode.stop().then(() => {
+                                // Traitement propre du code scanné
+                                let scannedNumber = decodedText;
+                                if (scannedNumber.includes(':')) {
+                                    scannedNumber = scannedNumber.split(':')[1];
+                                }
+                                scannedNumber = scannedNumber.replace('+221', '').replace(/\s+/g, '').trim();
+
+                                // Arroser le state et fermer la caméra proprement
                                 setRecipient(scannedNumber);
-                                setScreen('send');
-                            }).catch(err => console.error(err));
-                        },
-                        (errorMessage) => {
-                            // Erreur de scan en cours (ignorée pour laisser tourner la caméra)
+                                
+                                if (qrInstanceRef.current) {
+                                    qrInstanceRef.current.stop().then(() => {
+                                        qrInstanceRef.current = null;
+                                        setScreen('send');
+                                    }).catch(() => {
+                                        qrInstanceRef.current = null;
+                                        setScreen('send');
+                                    });
+                                } else {
+                                    setScreen('send');
+                                }
+                            },
+                            () => {} // Ignorer les erreurs frame par frame
+                        ).catch((err) => {
+                            console.error("Erreur accès caméra:", err);
+                        });
+                    }, 300);
+
+                    return () => {
+                        isMounted = false;
+                        clearTimeout(timeoutId);
+                        if (qrInstanceRef.current) {
+                            qrInstanceRef.current.stop().catch(() => {});
+                            qrInstanceRef.current = null;
                         }
-                    ).catch(err => {
-                        console.error("Erreur d'accès à la caméra", err);
-                        alert("Impossible d'accéder à la caméra de votre téléphone.");
-                    });
-                } else {
-                    if (scannerRef.current) {
-                        scannerRef.current.stop().catch(() => {});
-                    }
+                    };
                 }
             }, [screen]);
 
@@ -440,7 +461,6 @@
                                     </div>
                                 </div>
 
-                                {/* BOUTONS D'ACTIONS PRINCIPAUX AVEC SCANNER CAMERA */}
                                 <div className="grid grid-cols-4 gap-2 mt-5">
                                     <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 shadow-lg text-[11px]">
                                         <i data-lucide="send" className="w-5 h-5"></i><span>Envoyer</span>
@@ -476,16 +496,16 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN DE SCAN DE LA CAMÉRA */}
+                    {/* ÉCRAN DE SCAN DE LA CAMÉRA ROBUSTE */}
                     {screen === 'scan' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
+                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Annuler</button>
                                 <div className="mt-4 text-center space-y-2">
                                     <h1 className="text-2xl font-bold text-white">Scanner un QR Code</h1>
-                                    <p className="text-slate-400 text-sm">Pointez la caméra vers le QR code KàdduPay</p>
+                                    <p className="text-slate-400 text-sm">Alignez le QR code dans le cadre</p>
                                 </div>
-                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-4 overflow-hidden shadow-2xl flex justify-center items-center">
+                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-4 overflow-hidden shadow-2xl flex justify-center items-center min-h-[280px]">
                                     <div id="reader" className="w-full rounded-2xl overflow-hidden"></div>
                                 </div>
                             </div>
@@ -618,7 +638,7 @@
                                 <form onSubmit={handleSendMoney} className="mt-6 space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-slate-300 uppercase">Numéro destinataire</label>
-                                        <input type="tel" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="786303976" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-white focus:outline-none" required />
+                                        <input type="tel" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="786303976" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-white focus:outline-none text-lg font-bold" required />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-slate-300 uppercase">Montant (FCFA)</label>
