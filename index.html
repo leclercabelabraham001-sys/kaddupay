@@ -108,9 +108,11 @@
         function App() {
             const [screen, setScreen] = useState('phone');
             const [phone, setPhone] = useState('');
+            const [isNewUser, setIsNewUser] = useState(false);
             const [pin, setPin] = useState(['', '', '', '']);
             
             const [balance, setBalance] = useState(150000);
+            const [userName, setUserName] = useState('Utilisateur KàdduPay');
             const [recipient, setRecipient] = useState('');
             const [amount, setAmount] = useState('');
             
@@ -130,17 +132,28 @@
                 const savedPhone = localStorage.getItem('kaddupay_phone');
                 if (savedPhone) {
                     setPhone(savedPhone);
-                    setScreen('pin_login');
-                    setupCloudSync(savedPhone);
+                    checkUserExists(savedPhone);
                 }
             }, []);
 
-            // Gestion ultra-sécurisée du Scanner QR Code
+            // Vérifie dans Firebase si le numéro existe déjà ou non
+            const checkUserExists = (targetPhone) => {
+                db.ref('users/' + targetPhone).once('value').then((snapshot) => {
+                    if (snapshot.exists()) {
+                        setIsNewUser(false);
+                        setScreen('pin_login');
+                        setupCloudSync(targetPhone);
+                    } else {
+                        setIsNewUser(true);
+                        setScreen('pin_login'); // Écran de création de code pour les nouveaux
+                    }
+                });
+            };
+
             useEffect(() => {
                 let isMounted = true;
 
                 if (screen === 'scan') {
-                    // Délai minimal pour que le DOM `#reader` soit prêt
                     const timeoutId = setTimeout(() => {
                         if (!document.getElementById("reader")) return;
                         
@@ -153,14 +166,17 @@
                             (decodedText) => {
                                 if (!isMounted) return;
 
-                                // Traitement propre du code scanné
                                 let scannedNumber = decodedText;
                                 if (scannedNumber.includes(':')) {
                                     scannedNumber = scannedNumber.split(':')[1];
                                 }
                                 scannedNumber = scannedNumber.replace('+221', '').replace(/\s+/g, '').trim();
 
-                                // Arroser le state et fermer la caméra proprement
+                                if (scannedNumber === phone.trim()) {
+                                    alert("Vous ne pouvez pas vous envoyer de l'argent à vous-même !");
+                                    return;
+                                }
+
                                 setRecipient(scannedNumber);
                                 
                                 if (qrInstanceRef.current) {
@@ -175,7 +191,7 @@
                                     setScreen('send');
                                 }
                             },
-                            () => {} // Ignorer les erreurs frame par frame
+                            () => {}
                         ).catch((err) => {
                             console.error("Erreur accès caméra:", err);
                         });
@@ -190,13 +206,14 @@
                         }
                     };
                 }
-            }, [screen]);
+            }, [screen, phone]);
 
             const setupCloudSync = (targetPhone) => {
                 db.ref('users/' + targetPhone).on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
                         setBalance(data.balance ?? 150000);
+                        setUserName(data.name ?? `Client +221 ${targetPhone}`);
                         setTransactions(data.transactions ? Object.values(data.transactions).reverse() : []);
                     }
                 });
@@ -207,7 +224,7 @@
                 const cleanPhone = phone.trim();
                 if (!cleanPhone || cleanPhone.length < 8) return alert('Numéro invalide.');
                 localStorage.setItem('kaddupay_phone', cleanPhone);
-                setScreen('pin_login');
+                checkUserExists(cleanPhone);
             };
 
             const handlePinSubmit = (e) => {
@@ -223,10 +240,12 @@
                     const userData = snapshot.val();
                     
                     if (!userData) {
+                        // CRÉATION DU COMPTE AVEC LE VRAI PIN CHOISI PAR L'UTILISATEUR
+                        const defaultName = `Client +221 ${cleanPhone.slice(-6)}`;
                         db.ref('users/' + cleanPhone).set({
                             pin: fullPin,
                             balance: 150000,
-                            name: 'Abel Leclerc',
+                            name: defaultName,
                             transactions: {
                                 1: { id: 1, type: 'reception', name: 'Bonus KàdduPay', amount: '+ 150 000 FCFA', date: 'Bienvenue' }
                             }
@@ -236,6 +255,7 @@
                             setScreen('dashboard');
                         });
                     } else {
+                        // CONNEXION D'UN UTILISATEUR EXISTANT
                         if (userData.pin && userData.pin !== fullPin) {
                             alert('Code secret incorrect !');
                             setPin(['', '', '', '']);
@@ -264,8 +284,14 @@
             const handleSendMoney = (e) => {
                 e.preventDefault();
                 const numericAmount = Number(amount);
-                const cleanRecipient = recipient.trim();
+                const cleanRecipient = recipient.replace(/\s+/g, '').trim();
+
                 if (!cleanRecipient || !numericAmount || numericAmount <= 0) return alert('Champs incorrects.');
+                
+                if (cleanRecipient === phone.trim()) {
+                    return alert("Erreur : Vous ne pouvez pas vous transférer de l'argent à vous-même !");
+                }
+
                 if (numericAmount > balance) return alert('Solde insuffisant.');
 
                 const senderRef = db.ref('users/' + phone);
@@ -299,9 +325,9 @@
 
                     if (!receiverData) {
                         receiverRef.set({
-                            pin: "0000",
+                            pin: "1234", // Pin par défaut sécurisé pour les comptes créés de force par un transfert
                             balance: newReceiverBalance,
-                            name: 'Client KàdduPay',
+                            name: `Client +221 ${cleanRecipient.slice(-6)}`,
                             transactions: { [txId]: newTxReceiver }
                         });
                     } else {
@@ -391,6 +417,7 @@
                 localStorage.removeItem('kaddupay_pin');
                 setPhone('');
                 setPin(['', '', '', '']);
+                setIsNewUser(false);
                 setScreen('phone');
             };
 
@@ -405,7 +432,7 @@
                                         ⚡ 0 Frais & Temps Réel
                                     </div>
                                     <h1 className="text-3xl font-extrabold text-white">Entrez votre numéro</h1>
-                                    <p className="text-slate-400 text-sm">Accédez à votre compte KàdduPay.</p>
+                                    <p className="text-slate-400 text-sm">Accédez ou créez votre compte KàdduPay.</p>
                                 </div>
                                 <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-4">
                                     <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
@@ -424,8 +451,12 @@
                                 <button onClick={() => setScreen('phone')} className="text-slate-400 text-sm pt-2">← Retour</button>
                                 <div className="mt-8 space-y-2 text-center">
                                     <div className="flex justify-center mb-4"><KadduPayLogo className="h-12" /></div>
-                                    <h1 className="text-2xl font-bold text-white">Entrez votre code</h1>
-                                    <p className="text-slate-400 text-sm">+221 {phone}</p>
+                                    <h1 className="text-2xl font-bold text-white">
+                                        {isNewUser ? "Créez votre code PIN" : "Entrez votre code secret"}
+                                    </h1>
+                                    <p className="text-slate-400 text-sm">
+                                        {isNewUser ? "Sécurisez votre nouveau compte KàdduPay" : `+221 ${phone}`}
+                                    </p>
                                 </div>
                                 <form onSubmit={handlePinSubmit} className="mt-8 space-y-8">
                                     <div className="flex justify-center space-x-3">
@@ -433,7 +464,9 @@
                                             <input id={`pin-${index}`} key={index} type="password" inputMode="numeric" maxLength="1" value={pin[index]} onChange={(e) => handlePinInput(e.target.value, index)} className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl text-center text-3xl font-bold text-white focus:border-orange-500 focus:outline-none" />
                                         ))}
                                     </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg">Confirmer</button>
+                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg">
+                                        {isNewUser ? "Valider et Créer le compte" : "Confirmer"}
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -496,7 +529,6 @@
                         </div>
                     )}
 
-                    {/* ÉCRAN DE SCAN DE LA CAMÉRA ROBUSTE */}
                     {screen === 'scan' && (
                         <div className="flex flex-col justify-between h-full py-2">
                             <div>
@@ -517,10 +549,10 @@
                             <div>
                                 <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
                                 <div className="mt-4 text-center space-y-2">
-                                    <div className="w-20 h-20 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-full mx-auto flex items-center text-3xl font-bold justify-center text-white shadow-xl">
+                                    <div className="w-20 h-20 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-full mx-auto flex items-center text-2xl font-extrabold justify-center text-white shadow-xl">
                                         {phone.slice(-2)}
                                     </div>
-                                    <h1 className="text-2xl font-bold text-white">Abel Leclerc</h1>
+                                    <h1 className="text-2xl font-bold text-white">{userName}</h1>
                                     <p className="text-slate-400 text-sm">🇸🇳 +221 {phone}</p>
                                     <div className="inline-flex items-center space-x-1.5 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-blue-400 text-xs font-semibold">
                                         <span>✓ Compte Vérifié (KYC Sénégal)</span>
