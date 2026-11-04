@@ -13,6 +13,8 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- QRCode Generator Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -37,7 +39,7 @@
     <div id="root" class="h-full"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         const firebaseConfig = {
             apiKey: "AIzaSyDqqIU5pOJtYJsMW5cvPPg3kTa0IAUsXhQ",
@@ -55,9 +57,8 @@
         }
         const db = firebase.database();
 
-        // Configuration PayDunya (Prêt pour basculer en 'live' avec tes clés de production)
         const PAYDUNYA_CONFIG = {
-            mode: "test", // "test" (Sandbox gratuit) ou "live" (Argent réel)
+            mode: "test",
             master_key: "test_master_key_...",
             private_key: "test_private_key_...",
             public_key: "test_public_key_..."
@@ -81,6 +82,27 @@
                 </div>
             </div>
         );
+
+        // Composant QR Code Dynamique
+        const DynamicQRCode = ({ value }) => {
+            const qrContainerRef = useRef(null);
+
+            useEffect(() => {
+                if (qrContainerRef.current && window.QRCode) {
+                    qrContainerRef.current.innerHTML = "";
+                    new window.QRCode(qrContainerRef.current, {
+                        text: value,
+                        width: 140,
+                        height: 140,
+                        colorDark : "#0b1329",
+                        colorLight : "#ffffff",
+                        correctLevel : window.QRCode.CorrectLevel.H
+                    });
+                }
+            }, [value]);
+
+            return <div ref={qrContainerRef} className="flex justify-center items-center"></div>;
+        };
 
         function App() {
             const [screen, setScreen] = useState('phone');
@@ -235,7 +257,6 @@
                 });
             };
 
-            // DÉPÔT PAYDUNYA
             const handleDeposit = (e) => {
                 e.preventDefault();
                 const numDeposit = Number(depositAmount);
@@ -263,7 +284,6 @@
                 setScreen('dashboard');
             };
 
-            // RETRAIT PAYDUNYA (PAYOUT)
             const handleWithdraw = (e) => {
                 e.preventDefault();
                 const numWithdraw = Number(withdrawAmount);
@@ -429,13 +449,12 @@
 
                                 <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center space-y-4">
                                     <p className="text-xs font-bold text-slate-400 uppercase">Mon QR Code de Réception</p>
-                                    <div className="bg-white p-4 rounded-2xl w-40 h-40 mx-auto flex flex-col items-center justify-center shadow-inner">
-                                        <div className="w-32 h-32 bg-slate-900 rounded-lg p-2 flex flex-col justify-between items-center text-white text-[9px] font-mono text-center">
-                                            <div className="bg-orange-500 w-full py-1 font-bold rounded">KAADUPAY QR</div>
-                                            <div className="tracking-widest font-extrabold">+221 {phone}</div>
-                                            <div className="text-[7px] text-slate-400">0 Frais instantané</div>
-                                        </div>
+                                    
+                                    {/* VRAI QR CODE SCANNABLE GÉNÉRÉ EN TEMPS RÉEL */}
+                                    <div className="bg-white p-4 rounded-2xl w-48 h-48 mx-auto flex flex-col items-center justify-center shadow-lg">
+                                        <DynamicQRCode value={`kaddupay:+221${phone}`} />
                                     </div>
+                                    
                                     <p className="text-xs text-slate-400">Faites scanner ce code pour recevoir de l'argent instantanément.</p>
                                 </div>
 
