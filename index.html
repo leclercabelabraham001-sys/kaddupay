@@ -1,690 +1,488 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>KàdduPay - Paiement Mobile Sans Frais au Sénégal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RAPIDLY Sénégal - VTC, Livraison & Fret</title>
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- QRCode Generator Script -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Html5 Qrcode Scanner Script -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- Firebase SDK (Compat) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Leaflet CSS & JS pour la carte -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rapidlyRed: '#E50914',
+                        rapidlyRedDark: '#C00711',
+                        rapidlyBg: '#F8F9FA',
+                        rapidlyCard: '#FFFFFF',
+                        rapidlyBorder: '#E5E7EB',
+                        rapidlyText: '#111827',
+                        rapidlySubtext: '#6B7280'
+                    }
+                }
+            }
+        }
+    </script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #0b1329;
-            color: #f8fafc;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            height: 100dvh;
-            overflow-x: hidden;
+            background-color: #F8F9FA;
+            color: #111827;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: manipulation;
             user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #E5E7EB;
+            z-index: 1;
+        }
+        .leaflet-control-zoom, .leaflet-control-attribution {
+            display: none !important;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Ombres douces style iOS / Yango */
+        .shadow-yango {
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+        .shadow-card {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
-<body class="h-full">
-    <div id="root" class="h-full"></div>
+<body class="bg-rapidlyBg text-rapidlyText antialiased">
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <div class="max-w-md mx-auto h-screen bg-rapidlyBg flex flex-col relative shadow-2xl overflow-hidden border-x border-rapidlyBorder">
+        
+        <!-- HEADER EN-TÊTE BLANC ÉPURÉ -->
+        <header class="absolute top-0 left-0 right-0 p-4 z-30 flex justify-between items-center pointer-events-none">
+            <!-- Menu Burger Blanc -->
+            <button onclick="alert('Menu RAPIDLY : Historique des courses, Paiements (Wave, Orange Money), Aide & Support 24/7')" class="pointer-events-auto w-11 h-11 bg-white/95 backdrop-blur-md rounded-2xl border border-rapidlyBorder flex items-center justify-center shadow-yango active:scale-95 transition">
+                <svg class="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDqqIU5pOJtYJsMW5cvPPg3kTa0IAUsXhQ",
-            authDomain: "kaadupay.firebaseapp.com",
-            databaseURL: "https://kaadupay-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "kaadupay",
-            storageBucket: "kaadupay.firebasestorage.app",
-            messagingSenderId: "996765843976",
-            appId: "1:996765843976:web:fa4312ffef199add3007bd",
-            measurementId: "G-SWYYHXPXR5"
-        };
+            <!-- Logo Badge Blanc avec R Rouge RAPIDLY -->
+            <div class="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-md p-1.5 px-3.5 rounded-2xl border border-rapidlyBorder shadow-yango">
+                <div class="w-7 h-7 rounded-lg bg-rapidlyRed flex items-center justify-center p-1 shrink-0 shadow-sm">
+                    <svg viewBox="0 0 100 100" class="w-full h-full">
+                        <path d="M 22,12 L 58,12 C 78,12 88,23 88,38 C 88,50 78,60 62,61 L 88,88 L 66,88 L 44,62 L 40,62 L 40,88 L 22,88 Z M 40,30 L 40,46 L 55,46 C 64,46 70,42 70,38 C 70,33 64,30 55,30 Z" fill="#FFFFFF" />
+                    </svg>
+                </div>
+                <span class="font-black text-sm tracking-tight text-gray-900">RAPIDLY</span>
+                <span class="bg-rapidlyRed/10 text-rapidlyRed text-[9px] px-1.5 py-0.5 rounded font-black">SN</span>
+            </div>
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.database();
+            <!-- Bouton Mode Conducteur -->
+            <button id="modeToggleBtn" onclick="toggleUserRole()" class="pointer-events-auto bg-gray-900 hover:bg-black active:scale-95 text-white text-xs px-3.5 py-2.5 rounded-2xl font-bold shadow-yango transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-rapidlyRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                <span id="modeBtnText">Mode Chauffeur</span>
+            </button>
+        </header>
 
-        const PAYDUNYA_CONFIG = {
-            mode: "test",
-            master_key: "test_master_key_...",
-            private_key: "test_private_key_...",
-            public_key: "test_public_key_..."
-        };
+        <!-- CARTE CLAIRE STYLE YANGO (OPENSTREETMAP HD) -->
+        <div class="relative w-full flex-1">
+            <div id="map"></div>
 
-        const KadduPayLogo = ({ className = "h-12" }) => (
-            <div className={`flex items-center space-x-3 ${className}`}>
-                <svg viewBox="0 0 100 110" className="h-full w-auto flex-shrink-0 drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M15 10H42V100H15Z" fill="#C27838" />
-                    <path d="M20 15H37V95H20Z" fill="#1E293B" />
-                    <path d="M42 55L78 10H100L58 60L100 100H76L42 58V55Z" fill="#C27838" />
-                    <path d="M42 50L75 15H88L55 52Z" fill="#1E3A8A" />
-                    <path d="M52 56L85 95H72L42 60Z" fill="#1E3A8A" />
-                    <path d="M68 22C68 22 75 18 82 24C86 27 84 32 80 34C75 36 70 32 68 22Z" fill="#F97316" />
-                    <circle cx="76" cy="25" r="2.5" fill="#FFFFFF" />
-                    <polygon points="82,26 90,28 83,31" fill="#F97316" />
-                </svg>
-                <div className="flex flex-col justify-center leading-none">
-                    <span className="font-extrabold text-2xl tracking-tight text-[#F97316]">Kàddu</span>
-                    <span className="font-extrabold text-2xl tracking-tight text-[#1E3A8A] mt-0.5">Pay</span>
+            <!-- BANDEAU D'INFORMATION TRAJET DYNAMIQUE SUR LA CARTE -->
+            <div id="mapRouteBadge" class="hidden absolute top-20 left-4 right-4 z-20 bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-rapidlyBorder justify-between items-center text-gray-900 shadow-yango transition-all">
+                <div class="flex items-center gap-2.5 truncate">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span id="routeBadgeText" class="truncate font-bold text-xs text-gray-800">Fann ➔ Yoff</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="routeDistanceText" class="font-extrabold text-xs text-rapidlyRed bg-rapidlyRed/10 px-2 py-0.5 rounded-full">10.8 km</span>
+                    <span id="routeTimeText" class="text-gray-500 font-semibold text-[11px]">27 min</span>
                 </div>
             </div>
-        );
 
-        const DynamicQRCode = ({ value }) => {
-            const qrContainerRef = useRef(null);
+            <!-- Bouton Recentrer GPS Blanc -->
+            <button onclick="recenterMap()" class="absolute right-4 bottom-80 z-20 w-11 h-11 bg-white/95 backdrop-blur-md rounded-2xl border border-rapidlyBorder flex items-center justify-center text-gray-800 shadow-yango active:scale-95 transition">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+        </div>
 
-            useEffect(() => {
-                if (qrContainerRef.current && window.QRCode) {
-                    qrContainerRef.current.innerHTML = "";
-                    new window.QRCode(qrContainerRef.current, {
-                        text: value,
-                        width: 140,
-                        height: 140,
-                        colorDark : "#0b1329",
-                        colorLight : "#ffffff",
-                        correctLevel : window.QRCode.CorrectLevel.H
-                    });
-                }
-            }, [value]);
+        <!-- FENÊTRE D'ACCUEIL FLOTTANTE (STYLE YANGO BLANC) -->
+        <div id="homeSheet" class="absolute bottom-0 left-0 right-0 z-20 bg-white rounded-t-3xl p-5 flex flex-col gap-4 shadow-yango border-t border-rapidlyBorder">
+            <!-- Poignée tactile -->
+            <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto -mt-1 mb-1"></div>
 
-            return <div ref={qrContainerRef} className="flex justify-center items-center"></div>;
+            <!-- BARRE DE RECHERCHE PRINCIPALE "OÙ ALLEZ-VOUS ?" -->
+            <div onclick="openOrderModal('ville')" class="bg-gray-50 hover:bg-gray-100 border border-gray-200 p-4 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition shadow-card">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-3.5 h-3.5 rounded-full bg-rapidlyRed ring-4 ring-rapidlyRed/20"></div>
+                    <div>
+                        <span class="text-sm font-extrabold text-gray-900 block">Où allez-vous ?</span>
+                        <span class="text-xs text-gray-500 font-medium">Tapez une destination (Plateau, Almadies, Fann...)</span>
+                    </div>
+                </div>
+                <div class="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+                    <svg class="w-4 h-4 text-rapidlyRed" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+            </div>
+
+            <!-- GRILLE DES 4 SERVICES PRINCIPAUX (DESIGN YANGO) -->
+            <div class="grid grid-cols-4 gap-2.5">
+                <!-- VTC Ville -->
+                <div onclick="openOrderModal('ville')" class="bg-gray-50 border border-gray-100 hover:border-rapidlyRed/40 p-3 rounded-2xl flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition text-center shadow-card group">
+                    <div class="w-12 h-12 rounded-2xl bg-rapidlyRed/10 text-rapidlyRed group-hover:bg-rapidlyRed group-hover:text-white transition flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1"/></svg>
+                    </div>
+                    <span class="text-xs font-bold text-gray-900">Ville</span>
+                    <span class="text-[9px] text-gray-500 font-semibold -mt-1">VTC Négocié</span>
+                </div>
+
+                <!-- Livraison Express -->
+                <div onclick="openOrderModal('livraison')" class="bg-gray-50 border border-gray-100 hover:border-amber-500/40 p-3 rounded-2xl flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition text-center shadow-card group">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                    <span class="text-xs font-bold text-gray-900">Livraison</span>
+                    <span class="text-[9px] text-gray-500 font-semibold -mt-1">Colis Moto</span>
+                </div>
+
+                <!-- Régions -->
+                <div onclick="openOrderModal('regions')" class="bg-gray-50 border border-gray-100 hover:border-blue-500/40 p-3 rounded-2xl flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition text-center shadow-card group">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    </div>
+                    <span class="text-xs font-bold text-gray-900">Régions</span>
+                    <span class="text-[9px] text-gray-500 font-semibold -mt-1">Interurbain</span>
+                </div>
+
+                <!-- Fret -->
+                <div onclick="openOrderModal('fret')" class="bg-gray-50 border border-gray-100 hover:border-purple-500/40 p-3 rounded-2xl flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition text-center shadow-card group">
+                    <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8"/></svg>
+                    </div>
+                    <span class="text-xs font-bold text-gray-900">Fret</span>
+                    <span class="text-[9px] text-gray-500 font-semibold -mt-1">Camion</span>
+                </div>
+            </div>
+
+            <!-- Destinations populaires -->
+            <div class="space-y-2 pt-1">
+                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Destinations fréquentes</span>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <button onclick="quickSelectDestination('Fann Résidence', 'Yoff Océan')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 px-3.5 py-2 rounded-xl text-xs font-bold text-gray-800 shrink-0 flex items-center gap-1.5 shadow-sm">
+                        📍 Fann ➔ Yoff
+                    </button>
+                    <button onclick="quickSelectDestination('Mermoz Pyrotechnie', 'Dakar Plateau')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 px-3.5 py-2 rounded-xl text-xs font-bold text-gray-800 shrink-0 flex items-center gap-1.5 shadow-sm">
+                        📍 Mermoz ➔ Plateau
+                    </button>
+                    <button onclick="quickSelectDestination('Les Almadies', 'Aéroport AIBD')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 px-3.5 py-2 rounded-xl text-xs font-bold text-gray-800 shrink-0 flex items-center gap-1.5 shadow-sm">
+                        ✈️ Almadies ➔ AIBD
+                    </button>
+                    <button onclick="quickSelectDestination('Dakar Centre', 'Thiès Gare')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 px-3.5 py-2 rounded-xl text-xs font-bold text-gray-800 shrink-0 flex items-center gap-1.5 shadow-sm">
+                        📍 Dakar ➔ Thiès
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- FENÊTRE DE COMMANDE & NÉGOCIATION (MODE BLANC SEIGNEUR) -->
+        <div id="orderSheet" class="hidden absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl p-5 flex-col gap-4 shadow-yango border-t border-rapidlyBorder">
+            
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <button onclick="closeOrderModal()" class="p-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    </button>
+                    <h3 id="orderServiceTitle" class="font-black text-base text-gray-900">Commander une course</h3>
+                </div>
+                <span class="text-xs bg-rapidlyRed/10 text-rapidlyRed px-3 py-1 rounded-full font-extrabold">18% Commission</span>
+            </div>
+
+            <!-- Adresses -->
+            <div class="bg-gray-50 p-3.5 rounded-2xl border border-gray-200 space-y-3">
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0 ring-4 ring-emerald-500/20"></span>
+                    <div class="flex-1">
+                        <label class="text-[9px] text-gray-400 uppercase font-extrabold block">Point de Départ</label>
+                        <input type="text" id="orderDepartInput" oninput="calculateFareFromInputs()" value="Fann Résidence, Dakar" class="w-full bg-transparent text-xs focus:outline-none text-gray-900 font-bold">
+                    </div>
+                </div>
+                <div class="border-t border-gray-200/60"></div>
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-rapidlyRed shrink-0 ring-4 ring-rapidlyRed/20"></span>
+                    <div class="flex-1">
+                        <label class="text-[9px] text-gray-400 uppercase font-extrabold block">Destination</label>
+                        <input type="text" id="orderDestInput" oninput="calculateFareFromInputs()" value="Yoff Océan, Dakar" class="w-full bg-transparent text-xs focus:outline-none text-gray-900 font-bold">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Marchandage FCFA & Calculateur Dynamique -->
+            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Tarif calculé au km</span>
+                    <span id="suggestedPriceTag" class="text-xs bg-rapidlyRed/10 text-rapidlyRed px-2.5 py-1 rounded-full font-extrabold">Conseillé: 2 800 FCFA</span>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 my-1">
+                    <button onclick="adjustPrice(-200)" class="w-12 h-12 bg-white hover:bg-gray-100 active:scale-95 rounded-2xl font-black text-2xl flex items-center justify-center text-gray-900 shadow-sm border border-gray-200 transition">-</button>
+                    <div class="text-center">
+                        <span id="priceVal" class="text-4xl font-black text-gray-900 tracking-tight">2800</span>
+                        <span class="text-xs text-gray-500 block font-bold">FCFA</span>
+                    </div>
+                    <button onclick="adjustPrice(200)" class="w-12 h-12 bg-white hover:bg-gray-100 active:scale-95 rounded-2xl font-black text-2xl flex items-center justify-center text-gray-900 shadow-sm border border-gray-200 transition">+</button>
+                </div>
+
+                <div class="flex justify-center gap-2 pt-1">
+                    <button onclick="adjustPrice(200)" class="bg-white border border-gray-200 text-gray-800 text-xs px-3 py-1.5 rounded-xl font-bold shadow-sm">+200 F</button>
+                    <button onclick="adjustPrice(500)" class="bg-white border border-gray-200 text-gray-800 text-xs px-3 py-1.5 rounded-xl font-bold shadow-sm">+500 F</button>
+                    <button onclick="adjustPrice(1000)" class="bg-white border border-gray-200 text-gray-800 text-xs px-3 py-1.5 rounded-xl font-bold shadow-sm">+1000 F</button>
+                </div>
+            </div>
+
+            <!-- Bouton de validation -->
+            <button onclick="launchSearch()" id="confirmOrderBtn" class="w-full bg-rapidlyRed hover:bg-rapidlyRedDark active:scale-98 text-white font-extrabold py-4 rounded-2xl shadow-lg shadow-rapidlyRed/25 text-sm uppercase tracking-wider transition">
+                Confirmer &amp; Négocier
+            </button>
+        </div>
+
+        <!-- MODE CONDUCTEUR (FOND BLANC ÉPURÉ) -->
+        <div id="driverSheet" class="hidden absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl p-5 flex-col gap-4 shadow-yango border-t border-rapidlyBorder">
+            <div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                <div>
+                    <h4 class="font-extrabold text-sm text-gray-900">Espace Conducteur RAPIDLY</h4>
+                    <p class="text-xs text-emerald-600 font-bold mt-0.5">● En ligne • Commission 18% par course</p>
+                </div>
+                <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-ping"></span>
+            </div>
+
+            <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Demandes entrantes à Dakar</span>
+
+            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h5 class="font-bold text-sm text-gray-900">Moussa S.</h5>
+                        <p class="text-xs text-gray-500">Fann Résidence &rarr; Yoff Océan</p>
+                    </div>
+                    <span class="text-xs font-extrabold bg-gray-200 px-2 py-0.5 rounded-md text-gray-800">10.8 km</span>
+                </div>
+                <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-gray-200">
+                    <span class="text-xs text-gray-500">Offre Client: <strong class="text-rapidlyRed text-sm block">2 800 FCFA</strong></span>
+                    <span class="text-xs text-emerald-600 font-extrabold">Gain Net (-18%): 2 296 F</span>
+                </div>
+                <button onclick="alert('Course acceptée ! Se rendre au point de départ.')" class="w-full bg-rapidlyRed hover:bg-rapidlyRedDark text-white text-xs py-3.5 rounded-xl font-extrabold uppercase shadow-md shadow-rapidlyRed/20">
+                    Accepter la course
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let map;
+        let userRole = 'passager';
+        let currentPrice = 2800;
+        let selectedService = 'ville';
+        let userMarker, destMarker, routeLine;
+
+        // Base de données GPS simplifiée de Dakar pour le calcul exact des distances et tarifs
+        const DAKAR_GPS = {
+            'fann': { lat: 14.6890, lng: -17.4660, name: 'Fann Résidence' },
+            'yoff': { lat: 14.7610, lng: -17.4650, name: 'Yoff Océan' },
+            'mermoz': { lat: 14.7088, lng: -17.4741, name: 'Mermoz Pyrotechnie' },
+            'plateau': { lat: 14.6680, lng: -17.4350, name: 'Dakar Plateau' },
+            'almadies': { lat: 14.7450, lng: -17.5180, name: 'Les Almadies' },
+            'aibd': { lat: 14.6700, lng: -17.0700, name: 'Aéroport AIBD' },
+            'thies': { lat: 14.7900, lng: -16.9200, name: 'Thiès Gare' }
         };
 
-        function App() {
-            const [screen, setScreen] = useState('phone');
-            const [phone, setPhone] = useState('');
-            const [isNewUser, setIsNewUser] = useState(false);
-            const [pin, setPin] = useState(['', '', '', '']);
-            
-            const [balance, setBalance] = useState(150000);
-            const [userName, setUserName] = useState('Utilisateur KàdduPay');
-            const [recipient, setRecipient] = useState('');
-            const [amount, setAmount] = useState('');
-            
-            const [depositAmount, setDepositAmount] = useState('');
-            const [depositProvider, setDepositProvider] = useState('Orange Money');
-            
-            const [withdrawAmount, setWithdrawAmount] = useState('');
-            const [withdrawProvider, setWithdrawProvider] = useState('Orange Money');
-            const [withdrawPhone, setWithdrawPhone] = useState('');
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+        });
 
-            const [transactions, setTransactions] = useState([]);
-            const [newPinVal, setNewPinVal] = useState('');
-            const qrInstanceRef = useRef(null);
+        function initMap() {
+            const dakarCenter = [14.7088, -17.4741];
 
-            useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-                const savedPhone = localStorage.getItem('kaddupay_phone');
-                if (savedPhone) {
-                    setPhone(savedPhone);
-                    checkUserExists(savedPhone);
-                }
-            }, []);
+            if (typeof L !== 'undefined') {
+                // Utilisation des tuiles standard OpenStreetMap (Style Clair Yango)
+                map = L.map('map', {
+                    zoomControl: false,
+                    attributionControl: false
+                }).setView(dakarCenter, 13);
 
-            // Vérifie dans Firebase si le numéro existe déjà ou non
-            const checkUserExists = (targetPhone) => {
-                db.ref('users/' + targetPhone).once('value').then((snapshot) => {
-                    if (snapshot.exists()) {
-                        setIsNewUser(false);
-                        setScreen('pin_login');
-                        setupCloudSync(targetPhone);
-                    } else {
-                        setIsNewUser(true);
-                        setScreen('pin_login'); // Écran de création de code pour les nouveaux
-                    }
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+
+                const userIcon = L.divIcon({
+                    html: '<div style="background:#10B981; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(16,185,129,0.6);"></div>'
                 });
-            };
+                userMarker = L.marker(dakarCenter, { icon: userIcon }).addTo(map);
 
-            useEffect(() => {
-                let isMounted = true;
-
-                if (screen === 'scan') {
-                    const timeoutId = setTimeout(() => {
-                        if (!document.getElementById("reader")) return;
-                        
-                        const html5QrCode = new Html5Qrcode("reader");
-                        qrInstanceRef.current = html5QrCode;
-
-                        html5QrCode.start(
-                            { facingMode: "environment" },
-                            { fps: 10, qrbox: { width: 220, height: 220 } },
-                            (decodedText) => {
-                                if (!isMounted) return;
-
-                                let scannedNumber = decodedText;
-                                if (scannedNumber.includes(':')) {
-                                    scannedNumber = scannedNumber.split(':')[1];
-                                }
-                                scannedNumber = scannedNumber.replace('+221', '').replace(/\s+/g, '').trim();
-
-                                if (scannedNumber === phone.trim()) {
-                                    alert("Vous ne pouvez pas vous envoyer de l'argent à vous-même !");
-                                    return;
-                                }
-
-                                setRecipient(scannedNumber);
-                                
-                                if (qrInstanceRef.current) {
-                                    qrInstanceRef.current.stop().then(() => {
-                                        qrInstanceRef.current = null;
-                                        setScreen('send');
-                                    }).catch(() => {
-                                        qrInstanceRef.current = null;
-                                        setScreen('send');
-                                    });
-                                } else {
-                                    setScreen('send');
-                                }
-                            },
-                            () => {}
-                        ).catch((err) => {
-                            console.error("Erreur accès caméra:", err);
-                        });
-                    }, 300);
-
-                    return () => {
-                        isMounted = false;
-                        clearTimeout(timeoutId);
-                        if (qrInstanceRef.current) {
-                            qrInstanceRef.current.stop().catch(() => {});
-                            qrInstanceRef.current = null;
-                        }
-                    };
-                }
-            }, [screen, phone]);
-
-            const setupCloudSync = (targetPhone) => {
-                db.ref('users/' + targetPhone).on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        setBalance(data.balance ?? 150000);
-                        setUserName(data.name ?? `Client +221 ${targetPhone}`);
-                        setTransactions(data.transactions ? Object.values(data.transactions).reverse() : []);
-                    }
-                });
-            };
-
-            const handlePhoneSubmit = (e) => {
-                e.preventDefault();
-                const cleanPhone = phone.trim();
-                if (!cleanPhone || cleanPhone.length < 8) return alert('Numéro invalide.');
-                localStorage.setItem('kaddupay_phone', cleanPhone);
-                checkUserExists(cleanPhone);
-            };
-
-            const handlePinSubmit = (e) => {
-                e.preventDefault();
-                if (pin.some(digit => digit === '') || pin.join('').length !== 4) {
-                    return alert('Veuillez entrer les 4 chiffres de votre code PIN.');
-                }
-
-                const fullPin = pin.join('');
-                const cleanPhone = phone.trim();
-
-                db.ref('users/' + cleanPhone).once('value').then((snapshot) => {
-                    const userData = snapshot.val();
-                    
-                    if (!userData) {
-                        // CRÉATION DU COMPTE AVEC LE VRAI PIN CHOISI PAR L'UTILISATEUR
-                        const defaultName = `Client +221 ${cleanPhone.slice(-6)}`;
-                        db.ref('users/' + cleanPhone).set({
-                            pin: fullPin,
-                            balance: 150000,
-                            name: defaultName,
-                            transactions: {
-                                1: { id: 1, type: 'reception', name: 'Bonus KàdduPay', amount: '+ 150 000 FCFA', date: 'Bienvenue' }
-                            }
-                        }).then(() => {
-                            localStorage.setItem('kaddupay_pin', fullPin);
-                            setupCloudSync(cleanPhone);
-                            setScreen('dashboard');
-                        });
-                    } else {
-                        // CONNEXION D'UN UTILISATEUR EXISTANT
-                        if (userData.pin && userData.pin !== fullPin) {
-                            alert('Code secret incorrect !');
-                            setPin(['', '', '', '']);
-                            document.getElementById('pin-0')?.focus();
-                            return;
-                        }
-                        localStorage.setItem('kaddupay_pin', fullPin);
-                        setupCloudSync(cleanPhone);
-                        setScreen('dashboard');
-                    }
-                }).catch(() => {
-                    alert('Erreur de connexion au serveur. Réessayez.');
-                });
-            };
-
-            const handlePinInput = (val, index) => {
-                const cleanVal = val.replace(/[^0-9]/g, '').slice(-1);
-                const newPinState = [...pin];
-                newPinState[index] = cleanVal;
-                setPin(newPinState);
-                if (cleanVal && index < 3) {
-                    document.getElementById(`pin-${index + 1}`)?.focus();
-                }
-            };
-
-            const handleSendMoney = (e) => {
-                e.preventDefault();
-                const numericAmount = Number(amount);
-                const cleanRecipient = recipient.replace(/\s+/g, '').trim();
-
-                if (!cleanRecipient || !numericAmount || numericAmount <= 0) return alert('Champs incorrects.');
-                
-                if (cleanRecipient === phone.trim()) {
-                    return alert("Erreur : Vous ne pouvez pas vous transférer de l'argent à vous-même !");
-                }
-
-                if (numericAmount > balance) return alert('Solde insuffisant.');
-
-                const senderRef = db.ref('users/' + phone);
-                const receiverRef = db.ref('users/' + cleanRecipient);
-
-                receiverRef.once('value').then((snapshot) => {
-                    let receiverData = snapshot.val();
-                    const txId = Date.now();
-                    const nowStr = 'À l\'instant';
-
-                    const newSenderBalance = balance - numericAmount;
-                    const newTxSender = {
-                        id: txId,
-                        type: 'envoi',
-                        name: cleanRecipient,
-                        amount: `- ${numericAmount.toLocaleString('fr-FR')} FCFA`,
-                        date: nowStr
-                    };
-
-                    const newReceiverBalance = ((receiverData && receiverData.balance) ? receiverData.balance : 150000) + numericAmount;
-                    const newTxReceiver = {
-                        id: txId,
-                        type: 'reception',
-                        name: phone,
-                        amount: `+ ${numericAmount.toLocaleString('fr-FR')} FCFA`,
-                        date: nowStr
-                    };
-
-                    senderRef.update({ balance: newSenderBalance });
-                    senderRef.child('transactions').push(newTxSender);
-
-                    if (!receiverData) {
-                        receiverRef.set({
-                            pin: "1234", // Pin par défaut sécurisé pour les comptes créés de force par un transfert
-                            balance: newReceiverBalance,
-                            name: `Client +221 ${cleanRecipient.slice(-6)}`,
-                            transactions: { [txId]: newTxReceiver }
-                        });
-                    } else {
-                        receiverRef.update({ balance: newReceiverBalance });
-                        receiverRef.child('transactions').push(newTxReceiver);
-                    }
-
-                    alert('Transfert de ' + numericAmount.toLocaleString('fr-FR') + ' FCFA réussi (0 FCFA de frais) !');
-                    setRecipient('');
-                    setAmount('');
-                    setScreen('dashboard');
-                });
-            };
-
-            const handleDeposit = (e) => {
-                e.preventDefault();
-                const numDeposit = Number(depositAmount);
-                if (!numDeposit || numDeposit <= 0) return alert('Montant invalide.');
-
-                const confirmPay = window.confirm(`[PayDunya ${PAYDUNYA_CONFIG.mode.toUpperCase()}] Initier le dépôt de ${numDeposit.toLocaleString('fr-FR')} FCFA via ${depositProvider} ?`);
-                if (!confirmPay) return;
-
-                const newBalance = balance + numDeposit;
-                const txId = Date.now();
-                const newTx = {
-                    id: txId,
-                    type: 'reception',
-                    name: `Dépôt (${depositProvider})`,
-                    amount: `+ ${numDeposit.toLocaleString('fr-FR')} FCFA`,
-                    date: 'À l\'instant'
-                };
-
-                const senderRef = db.ref('users/' + phone);
-                senderRef.update({ balance: newBalance });
-                senderRef.child('transactions').push(newTx);
-
-                alert(`Dépôt de ${numDeposit.toLocaleString('fr-FR')} FCFA validé avec succès !`);
-                setDepositAmount('');
-                setScreen('dashboard');
-            };
-
-            const handleWithdraw = (e) => {
-                e.preventDefault();
-                const numWithdraw = Number(withdrawAmount);
-                const cleanWPhone = withdrawPhone.trim();
-                if (!numWithdraw || numWithdraw <= 0) return alert('Montant de retrait invalide.');
-                if (!cleanWPhone || cleanWPhone.length < 8) return alert('Numéro de retrait invalide.');
-                if (numWithdraw > balance) return alert('Solde insuffisant pour ce retrait.');
-
-                const confirmPayout = window.confirm(`[PayDunya ${PAYDUNYA_CONFIG.mode.toUpperCase()}] Lancer le versement de ${numWithdraw.toLocaleString('fr-FR')} FCFA vers ${withdrawProvider} (${cleanWPhone}) ?`);
-                if (!confirmPayout) return;
-
-                const newBalance = balance - numWithdraw;
-                const txId = Date.now();
-                const newTx = {
-                    id: txId,
-                    type: 'envoi',
-                    name: `Retrait vers ${withdrawProvider} (${cleanWPhone})`,
-                    amount: `- ${numWithdraw.toLocaleString('fr-FR')} FCFA`,
-                    date: 'À l\'instant'
-                };
-
-                const senderRef = db.ref('users/' + phone);
-                senderRef.update({ balance: newBalance });
-                senderRef.child('transactions').push(newTx);
-
-                alert(`Retrait vers ${withdrawProvider} effectué avec succès !`);
-                setWithdrawAmount('');
-                setWithdrawPhone('');
-                setScreen('dashboard');
-            };
-
-            const handleChangePin = (e) => {
-                e.preventDefault();
-                if (newPinVal.length !== 4) return alert('Le nouveau code PIN doit comporter exactement 4 chiffres.');
-                
-                db.ref('users/' + phone).update({ pin: newPinVal }).then(() => {
-                    localStorage.setItem('kaddupay_pin', newPinVal);
-                    alert('Code PIN modifié avec succès !');
-                    setNewPinVal('');
-                    setScreen('dashboard');
-                });
-            };
-
-            const logout = () => {
-                localStorage.removeItem('kaddupay_phone');
-                localStorage.removeItem('kaddupay_pin');
-                setPhone('');
-                setPin(['', '', '', '']);
-                setIsNewUser(false);
-                setScreen('phone');
-            };
-
-            return (
-                <div className="flex flex-col h-full max-w-md mx-auto w-full bg-[#0b1329] p-5 justify-between">
-                    {screen === 'phone' && (
-                        <div className="flex flex-col justify-between h-full py-4">
-                            <div>
-                                <div className="pt-2"><KadduPayLogo className="h-14" /></div>
-                                <div className="mt-12 space-y-3">
-                                    <div className="inline-flex items-center space-x-2 bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded-full text-orange-400 text-xs font-semibold">
-                                        ⚡ 0 Frais & Temps Réel
-                                    </div>
-                                    <h1 className="text-3xl font-extrabold text-white">Entrez votre numéro</h1>
-                                    <p className="text-slate-400 text-sm">Accédez ou créez votre compte KàdduPay.</p>
-                                </div>
-                                <form onSubmit={handlePhoneSubmit} className="mt-8 space-y-4">
-                                    <div className="flex items-center bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
-                                        <span className="text-lg pr-3 border-r border-slate-700">🇸🇳 +221</span>
-                                        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="77 000 00 00" className="bg-transparent pl-3 w-full text-white focus:outline-none text-lg font-bold" required />
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-6 shadow-lg">Continuer</button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'pin_login' && (
-                        <div className="flex flex-col justify-between h-full py-4">
-                            <div>
-                                <button onClick={() => setScreen('phone')} className="text-slate-400 text-sm pt-2">← Retour</button>
-                                <div className="mt-8 space-y-2 text-center">
-                                    <div className="flex justify-center mb-4"><KadduPayLogo className="h-12" /></div>
-                                    <h1 className="text-2xl font-bold text-white">
-                                        {isNewUser ? "Créez votre code PIN" : "Entrez votre code secret"}
-                                    </h1>
-                                    <p className="text-slate-400 text-sm">
-                                        {isNewUser ? "Sécurisez votre nouveau compte KàdduPay" : `+221 ${phone}`}
-                                    </p>
-                                </div>
-                                <form onSubmit={handlePinSubmit} className="mt-8 space-y-8">
-                                    <div className="flex justify-center space-x-3">
-                                        {[0, 1, 2, 3].map((index) => (
-                                            <input id={`pin-${index}`} key={index} type="password" inputMode="numeric" maxLength="1" value={pin[index]} onChange={(e) => handlePinInput(e.target.value, index)} className="w-16 h-16 bg-slate-800 border border-slate-700 rounded-2xl text-center text-3xl font-bold text-white focus:border-orange-500 focus:outline-none" />
-                                        ))}
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl shadow-lg">
-                                        {isNewUser ? "Valider et Créer le compte" : "Confirmer"}
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'dashboard' && (
-                        <div className="flex flex-col h-full justify-between py-2 space-y-4 overflow-y-auto">
-                            <div>
-                                <div className="flex items-center justify-between">
-                                    <KadduPayLogo className="h-10" />
-                                    <div className="flex space-x-2">
-                                        <button onClick={() => setScreen('profile')} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-orange-400 text-xs font-semibold flex items-center space-x-1">
-                                            <i data-lucide="user" className="w-4 h-4"></i><span>Profil</span>
-                                        </button>
-                                        <button onClick={logout} className="bg-slate-800 p-2.5 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold">Quitter</button>
-                                    </div>
-                                </div>
-                                <div className="mt-5 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center shadow-xl">
-                                    <p className="text-xs font-semibold text-slate-400 uppercase">Solde disponible (+221 {phone})</p>
-                                    <div className="text-4xl font-extrabold text-white mt-2">
-                                        {balance.toLocaleString('fr-FR')} <span className="text-orange-400 text-xl">FCFA</span>
-                                    </div>
-                                    <div className="mt-4 inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-emerald-400 text-xs font-semibold">
-                                        ✓ PayDunya Connecté (0 Frais)
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-4 gap-2 mt-5">
-                                    <button onClick={() => setScreen('send')} className="bg-gradient-to-r from-orange-600 to-amber-500 text-white p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 shadow-lg text-[11px]">
-                                        <i data-lucide="send" className="w-5 h-5"></i><span>Envoyer</span>
-                                    </button>
-                                    <button onClick={() => setScreen('scan')} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 shadow-lg text-[11px]">
-                                        <i data-lucide="camera" className="w-5 h-5"></i><span>Scanner</span>
-                                    </button>
-                                    <button onClick={() => setScreen('deposit')} className="bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 text-[11px]">
-                                        <i data-lucide="download" className="w-5 h-5 text-emerald-400"></i><span>Dépôt</span>
-                                    </button>
-                                    <button onClick={() => setScreen('withdraw')} className="bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-2xl font-bold flex flex-col items-center justify-center space-y-1 text-[11px]">
-                                        <i data-lucide="upload" className="w-5 h-5 text-orange-400"></i><span>Retrait</span>
-                                    </button>
-                                </div>
-
-                                <div className="mt-6 space-y-3">
-                                    <h3 className="text-sm font-bold uppercase text-slate-400">Historique récent</h3>
-                                    <div className="space-y-3">
-                                        {transactions.map(tx => (
-                                            <div key={tx.id} className="bg-slate-800/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
-                                                <div>
-                                                    <p className="font-semibold text-sm text-white">{tx.name}</p>
-                                                    <p className="text-xs text-slate-500">{tx.date}</p>
-                                                </div>
-                                                <span className={`font-bold text-sm ${tx.type === 'reception' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                                    {tx.amount}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'scan' && (
-                        <div className="flex flex-col justify-between h-full py-2">
-                            <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Annuler</button>
-                                <div className="mt-4 text-center space-y-2">
-                                    <h1 className="text-2xl font-bold text-white">Scanner un QR Code</h1>
-                                    <p className="text-slate-400 text-sm">Alignez le QR code dans le cadre</p>
-                                </div>
-                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-4 overflow-hidden shadow-2xl flex justify-center items-center min-h-[280px]">
-                                    <div id="reader" className="w-full rounded-2xl overflow-hidden"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'profile' && (
-                        <div className="flex flex-col justify-between h-full py-2 overflow-y-auto">
-                            <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
-                                <div className="mt-4 text-center space-y-2">
-                                    <div className="w-20 h-20 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-full mx-auto flex items-center text-2xl font-extrabold justify-center text-white shadow-xl">
-                                        {phone.slice(-2)}
-                                    </div>
-                                    <h1 className="text-2xl font-bold text-white">{userName}</h1>
-                                    <p className="text-slate-400 text-sm">🇸🇳 +221 {phone}</p>
-                                    <div className="inline-flex items-center space-x-1.5 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-blue-400 text-xs font-semibold">
-                                        <span>✓ Compte Vérifié (KYC Sénégal)</span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-6 bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center space-y-4">
-                                    <p className="text-xs font-bold text-slate-400 uppercase">Mon QR Code de Réception</p>
-                                    <div className="bg-white p-4 rounded-2xl w-48 h-48 mx-auto flex flex-col items-center justify-center shadow-lg">
-                                        <DynamicQRCode value={`kaddupay:+221${phone}`} />
-                                    </div>
-                                    <p className="text-xs text-slate-400">Faites scanner ce code pour recevoir de l'argent instantanément.</p>
-                                </div>
-
-                                <div className="mt-4">
-                                    <button onClick={() => setScreen('settings')} className="w-full bg-slate-800 border border-slate-700 text-slate-200 font-bold py-3.5 rounded-2xl flex items-center justify-center space-x-2">
-                                        <i data-lucide="shield" className="w-5 h-5 text-orange-400"></i><span>Modifier le code PIN</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'settings' && (
-                        <div className="flex flex-col justify-between h-full py-2">
-                            <div>
-                                <button onClick={() => setScreen('profile')} className="text-slate-400 text-sm pt-2">← Retour</button>
-                                <div className="mt-6 space-y-2">
-                                    <h1 className="text-2xl font-bold text-white">Sécurité du compte</h1>
-                                    <p className="text-slate-400 text-sm">Modifiez votre code PIN secret à 4 chiffres.</p>
-                                </div>
-                                <form onSubmit={handleChangePin} className="mt-6 space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Nouveau Code PIN (4 chiffres)</label>
-                                        <input type="password" inputMode="numeric" maxLength="4" value={newPinVal} onChange={(e) => setNewPinVal(e.target.value)} placeholder="••••" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold tracking-widest text-white focus:outline-none" required />
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">Mettre à jour le PIN</button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'deposit' && (
-                        <div className="flex flex-col justify-between h-full py-2">
-                            <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
-                                <div className="mt-6 space-y-2">
-                                    <h1 className="text-2xl font-bold text-white">Dépôt (PayDunya)</h1>
-                                    <p className="text-slate-400 text-sm">Alimentez votre solde depuis Mobile Money</p>
-                                </div>
-                                <form onSubmit={handleDeposit} className="mt-6 space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Choisir l'opérateur</label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button type="button" onClick={() => setDepositProvider('Orange Money')} className={`p-3.5 rounded-2xl border font-bold text-sm ${depositProvider === 'Orange Money' ? 'bg-orange-500/20 border-orange-500 text-orange-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                                Orange Money
-                                            </button>
-                                            <button type="button" onClick={() => setDepositProvider('Free Money')} className={`p-3.5 rounded-2xl border font-bold text-sm ${depositProvider === 'Free Money' ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                                Free Money
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5 pt-2">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Montant (FCFA)</label>
-                                        <input type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="10000" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold text-white focus:outline-none" required />
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">Lancer le paiement</button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'withdraw' && (
-                        <div className="flex flex-col justify-between h-full py-2">
-                            <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
-                                <div className="mt-6 space-y-2">
-                                    <h1 className="text-2xl font-bold text-white">Retrait (Payout)</h1>
-                                    <p className="text-slate-400 text-sm">Transférez vers votre Mobile Money</p>
-                                </div>
-                                <form onSubmit={handleWithdraw} className="mt-6 space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Choisir l'opérateur</label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button type="button" onClick={() => setWithdrawProvider('Orange Money')} className={`p-3.5 rounded-2xl border font-bold text-sm ${withdrawProvider === 'Orange Money' ? 'bg-orange-500/20 border-orange-500 text-orange-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                                Orange Money
-                                            </button>
-                                            <button type="button" onClick={() => setWithdrawProvider('Free Money')} className={`p-3.5 rounded-2xl border font-bold text-sm ${withdrawProvider === 'Free Money' ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                                Free Money
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Numéro de téléphone</label>
-                                        <input type="tel" value={withdrawPhone} onChange={(e) => setWithdrawPhone(e.target.value)} placeholder="77 000 00 00" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-white focus:outline-none" required />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Montant du retrait (FCFA)</label>
-                                        <input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold text-white focus:outline-none" placeholder="0" required />
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">Confirmer le versement</button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {screen === 'send' && (
-                        <div className="flex flex-col justify-between h-full py-2">
-                            <div>
-                                <button onClick={() => setScreen('dashboard')} className="text-slate-400 text-sm pt-2">← Retour</button>
-                                <div className="mt-6 space-y-2">
-                                    <h1 className="text-2xl font-bold text-white">Envoyer de l'argent</h1>
-                                    <p className="text-slate-400 text-sm">Frais de transfert : 0 FCFA</p>
-                                </div>
-                                <form onSubmit={handleSendMoney} className="mt-6 space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Numéro destinataire</label>
-                                        <input type="tel" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="786303976" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-white focus:outline-none text-lg font-bold" required />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-300 uppercase">Montant (FCFA)</label>
-                                        <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 w-full text-2xl font-bold text-white focus:outline-none" required />
-                                    </div>
-                                    <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-2xl mt-4 shadow-lg">Transférer instantanément</button>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+                // Invalidation forcée pour s'assurer que la carte se charge parfaitement sans écran noir
+                setTimeout(() => { map.invalidateSize(); }, 200);
+                setTimeout(() => { map.invalidateSize(); }, 800);
+            }
         }
-        ReactDOM.render(<App />, document.getElementById('root'));
+
+        function recenterMap() {
+            if (map && userMarker) {
+                map.setView(userMarker.getLatLng(), 14);
+            }
+        }
+
+        // CALCUL DE PRIX AU KILOMÈTRE RÉEL (STYLE YANGO)
+        function calculateFareFromInputs() {
+            const depText = document.getElementById('orderDepartInput').value.toLowerCase();
+            const destText = document.getElementById('orderDestInput').value.toLowerCase();
+
+            let p1 = DAKAR_GPS['fann'];
+            let p2 = DAKAR_GPS['yoff'];
+
+            if (depText.includes('mermoz')) p1 = DAKAR_GPS['mermoz'];
+            if (depText.includes('almadies')) p1 = DAKAR_GPS['almadies'];
+            if (depText.includes('plateau')) p1 = DAKAR_GPS['plateau'];
+
+            if (destText.includes('plateau')) p2 = DAKAR_GPS['plateau'];
+            if (destText.includes('yoff')) p2 = DAKAR_GPS['yoff'];
+            if (destText.includes('aibd')) p2 = DAKAR_GPS['aibd'];
+            if (destText.includes('thies')) p2 = DAKAR_GPS['thies'];
+
+            // Formule Haversine pour calculer la distance exacte
+            const R = 6371;
+            const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+            const dLon = (p2.lng - p1.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distKm = (R * c).toFixed(1);
+
+            let basePrice = 1000;
+            let kmRate = 200; // 200 FCFA par km pour VTC Ville
+
+            if (selectedService === 'livraison') kmRate = 120;
+            else if (selectedService === 'regions') kmRate = 400;
+            else if (selectedService === 'fret') kmRate = 1200;
+
+            let calculated = Math.round((basePrice + distKm * kmRate) / 100) * 100;
+            calculated = Math.max(1000, calculated);
+
+            currentPrice = calculated;
+            document.getElementById('priceVal').innerText = currentPrice;
+            document.getElementById('suggestedPriceTag').innerText = `Conseillé: ${currentPrice.toLocaleString('fr-FR')} FCFA`;
+
+            // Mettre à jour l'itinéraire sur la carte
+            drawRouteOnMap([p1.lat, p1.lng], [p2.lat, p2.lng], distKm, p1.name, p2.name);
+        }
+
+        function openOrderModal(serviceType) {
+            selectedService = serviceType;
+            const titles = {
+                'ville': 'VTC Ville (Prix calculé au km)',
+                'livraison': 'Livraison Express Colis',
+                'regions': 'Liaison Interurbaine Régions',
+                'fret': 'Transport Fret & Camion'
+            };
+
+            document.getElementById('orderServiceTitle').innerText = titles[serviceType] || 'Commander une course';
+
+            document.getElementById('homeSheet').classList.add('hidden');
+            document.getElementById('orderSheet').classList.remove('hidden');
+            document.getElementById('orderSheet').classList.add('flex');
+            
+            calculateFareFromInputs();
+            if (map) setTimeout(() => { map.invalidateSize(); }, 100);
+        }
+
+        function closeOrderModal() {
+            document.getElementById('orderSheet').classList.add('hidden');
+            document.getElementById('orderSheet').classList.remove('flex');
+            document.getElementById('homeSheet').classList.remove('hidden');
+            document.getElementById('mapRouteBadge').classList.add('hidden');
+            if (routeLine && map) map.removeLayer(routeLine);
+            if (destMarker && map) map.removeLayer(destMarker);
+            if (map) setTimeout(() => { map.invalidateSize(); }, 100);
+        }
+
+        function quickSelectDestination(depName, destName) {
+            document.getElementById('orderDepartInput').value = depName;
+            document.getElementById('orderDestInput').value = destName;
+            openOrderModal('ville');
+        }
+
+        function adjustPrice(amt) {
+            currentPrice = Math.max(1000, currentPrice + amt);
+            document.getElementById('priceVal').innerText = currentPrice;
+        }
+
+        function drawRouteOnMap(startCoords, endCoords, distKm, depName, destName) {
+            if (!map) return;
+
+            if (userMarker) map.removeLayer(userMarker);
+            if (destMarker) map.removeLayer(destMarker);
+            if (routeLine) map.removeLayer(routeLine);
+
+            const startIcon = L.divIcon({
+                html: '<div style="background:#10B981; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(16,185,129,0.8);"></div>'
+            });
+            userMarker = L.marker(startCoords, { icon: startIcon }).addTo(map);
+
+            const destIcon = L.divIcon({
+                html: '<div style="background:#E50914; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 12px rgba(229,9,20,0.9);"></div>'
+            });
+            destMarker = L.marker(endCoords, { icon: destIcon }).addTo(map);
+
+            routeLine = L.polyline([startCoords, endCoords], {
+                color: '#E50914',
+                weight: 5,
+                dashArray: '6, 6'
+            }).addTo(map);
+
+            map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+            // Afficher le bandeau d'info trajet sur la carte
+            const badge = document.getElementById('mapRouteBadge');
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+            document.getElementById('routeBadgeText').innerText = `${depName} ➔ ${destName}`;
+            document.getElementById('routeDistanceText').innerText = `${distKm} km`;
+            document.getElementById('routeTimeText').innerText = `${Math.round(distKm * 2.5)} min`;
+        }
+
+        function launchSearch() {
+            const btn = document.getElementById('confirmOrderBtn');
+            btn.innerText = "Négociation avec les chauffeurs...";
+            btn.style.opacity = "0.7";
+
+            setTimeout(() => {
+                btn.innerText = "Confirmer & Négocier";
+                btn.style.opacity = "1";
+                alert(`Offre de ${currentPrice} FCFA transmise ! 2 chauffeurs proches examinent votre proposition.`);
+            }, 1500);
+        }
+
+        function toggleUserRole() {
+            userRole = userRole === 'passager' ? 'conducteur' : 'passager';
+            const btnText = document.getElementById('modeBtnText');
+            
+            if (userRole === 'conducteur') {
+                btnText.innerText = 'Passager';
+                document.getElementById('homeSheet').classList.add('hidden');
+                document.getElementById('orderSheet').classList.add('hidden');
+                document.getElementById('driverSheet').classList.remove('hidden');
+                document.getElementById('driverSheet').classList.add('flex');
+            } else {
+                btnText.innerText = 'Conducteur';
+                document.getElementById('driverSheet').classList.add('hidden');
+                document.getElementById('driverSheet').classList.remove('flex');
+                document.getElementById('homeSheet').classList.remove('hidden');
+            }
+            if (map) setTimeout(() => { map.invalidateSize(); }, 100);
+        }
     </script>
 </body>
 </html>
